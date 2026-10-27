@@ -165,3 +165,52 @@ Known limitations / deferred:
   inside the booking transaction.
 - Consultation lifecycle, encrypted prescriptions, access ownership on consultation reads, and
   aggregate admin analytics are the next Stage 4 slice.
+
+## M4 / Stage 4 — Consultation lifecycle, encrypted prescriptions, audit, and analytics
+
+Status: Complete
+
+Implemented:
+
+- Patient and assigned-doctor consultation reads with explicit aggregate-only admin denial and IDOR
+  protection through resource ownership checks.
+- Assigned-doctor-only idempotent start and completion transitions using conditional database
+  updates so invalid or concurrent state changes return conflicts.
+- Patient/assigned-doctor idempotent cancellation for pending-payment and confirmed consultations.
+  One transaction cancels the consultation, releases the slot, expires a pending payment or marks a
+  succeeded mock payment refunded, and writes a safe audit record.
+- Bounded cancellation reason codes prevent free-text PHI from entering general consultation state
+  or audit-adjacent workflows.
+- Assigned-doctor-only, versioned prescriptions after consultation completion. AES-256-GCM protects
+  content at rest with key-version metadata; creation responses and idempotency records contain
+  metadata only, never prescription plaintext.
+- Audited prescription reads decrypt content only for the patient or assigned doctor. Admin and
+  unrelated-user access is explicitly denied.
+- Aggregate-only admin analytics for users, doctor verification, consultation status, payment count
+  and minor-unit totals by currency, and prescription count. No PII or PHI records are returned.
+- OpenAPI 3.1/Swagger coverage for all Stage 4 routes. The schema now contains exactly the 22
+  assignment business endpoints.
+
+Verification completed:
+
+- `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, and
+  `npm run openapi:check` pass.
+- Prisma validation passes with an explicit command-scoped `DATABASE_URL`, and Docker Compose
+  configuration validation passes with disposable command-scoped placeholder secrets; no local
+  `.env` file was created or modified.
+- Unit suite: 18 files and 45 tests pass.
+- Integration suite: 4 files and 15 tests pass against isolated PostgreSQL 16 and Redis 7
+  containers.
+- Stage 4 integration proof covers patient/doctor ownership, unrelated patient IDOR denial, explicit
+  admin denial, doctor-only state transitions, pending-payment expiry compensation, succeeded-payment
+  refund compensation, two ordered prescription versions, ciphertext at rest, plaintext exclusion
+  from idempotency storage, authorized decryption, safe audit records, and aggregate analytics.
+- The Stage 4 runtime Docker image builds successfully, and `npm audit --audit-level=high` reports
+  zero vulnerabilities.
+
+Known limitations / deferred:
+
+- The mock `REFUNDED` state represents successful compensation for the assignment; a production
+  implementation would run the external refund asynchronously with retry/backoff and reconciliation.
+- Consultation notes, diagnosis coding, provider integrations, and broader admin drill-down APIs are
+  deliberately excluded from the one-day assignment scope.

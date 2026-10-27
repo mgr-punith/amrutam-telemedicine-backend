@@ -1,15 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
-import { format, resolveConfig } from 'prettier';
-import { stringify } from 'yaml';
-
-import { createOpenApiDocument } from '../src/openapi/document.js';
+import { serializeOpenApiDocument } from '../src/openapi/serialize.js';
 
 const outputPath = resolve('openapi/openapi.yaml');
 await mkdir(dirname(outputPath), { recursive: true });
-const generated = stringify(createOpenApiDocument(), { lineWidth: 100 });
-const prettierConfig = (await resolveConfig(outputPath)) ?? {};
-const formatted = await format(generated, { ...prettierConfig, filepath: outputPath });
+const formatted = await serializeOpenApiDocument(outputPath);
 await writeFile(outputPath, formatted, 'utf8');
 process.stdout.write(`Generated ${outputPath}\n`);

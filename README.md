@@ -1,8 +1,8 @@
 # Amrutam Telemedicine Backend
 
 Production-oriented TypeScript backend for the Amrutam telemedicine assignment. The repository
-is being delivered milestone by milestone; the current branch includes the HTTP foundation,
-database schema, encrypted demo seed, and security primitives needed by the authentication slice.
+is being delivered milestone by milestone; the current branch contains the complete assignment
+business API from authentication through consultation, prescription, and aggregate analytics.
 
 ## Current scope
 
@@ -19,6 +19,11 @@ database schema, encrypted demo seed, and security primitives needed by the auth
 - Generated OpenAPI 3.1 and executable Swagger UI at `http://localhost:3000/docs` in development.
 - Verified doctor search/profile/slot listing, doctor availability, admin verification, idempotent
   atomic booking, signed/deduplicated mock payment events, and success/failure compensation.
+- Owned consultation reads plus idempotent doctor start/complete and patient/doctor cancellation
+  with transactional slot and payment compensation.
+- Versioned AES-256-GCM prescription storage, audited patient/assigned-doctor reads, explicit admin
+  denial, and aggregate-only admin analytics.
+- Exactly 22 assignment business endpoints documented in the generated OpenAPI artifact.
 
 See [delivery progress](docs/PROGRESS.md) for verified results and current limitations.
 
@@ -75,9 +80,10 @@ Authentication routes are available under `/api/v1/auth`. Open Swagger UI at `/d
 registration, login, MFA, refresh, and logout. Use the generated doctor/admin TOTP secret from your
 local `.env`; secrets and protected data are never included in the OpenAPI artifact.
 
-Doctor browsing and booking/payment are available in Swagger. Every authenticated non-auth mutation
-requires an `Idempotency-Key`; payment webhooks require `X-Payment-Signature`. The dev payment
-simulator is available only outside production.
+The full business flow is available in Swagger. Every authenticated non-auth mutation requires an
+`Idempotency-Key`; payment webhooks require `X-Payment-Signature`. The dev payment simulator is
+available only outside production. Patients and assigned doctors can read prescriptions after the
+doctor completes the consultation; admins receive aggregate analytics only.
 
-Consultation lifecycle/prescriptions, observability, Terraform, and the final security documentation
-are delivered in later milestones defined in `AGENTS.md`.
+Observability, Terraform, final security/architecture documents, and the demo rehearsal remain in
+the later milestones defined in `AGENTS.md`.

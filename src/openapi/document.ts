@@ -8,6 +8,7 @@ import {
   registerRequestSchema,
 } from '../modules/auth/auth-contracts.js';
 import { createConsultationRequestSchema } from '../modules/consultations/booking-contracts.js';
+import { cancelConsultationRequestSchema } from '../modules/consultations/consultation-contracts.js';
 import {
   createAvailabilitySlotRequestSchema,
   doctorSearchQuerySchema,
@@ -17,6 +18,7 @@ import {
   paymentWebhookRequestSchema,
   simulatePaymentRequestSchema,
 } from '../modules/payments/payment-contracts.js';
+import { createPrescriptionRequestSchema } from '../modules/prescriptions/prescription-contracts.js';
 
 type OpenApiDocument = Readonly<Record<string, unknown>>;
 
@@ -55,7 +57,7 @@ export function createOpenApiDocument(): OpenApiDocument {
     openapi: '3.1.0',
     info: {
       title: 'Amrutam Telemedicine API',
-      version: '0.3.0',
+      version: '0.4.0',
       description: 'Security-first telemedicine backend demonstration API.',
     },
     servers: [{ url: 'http://localhost:3000', description: 'Local Docker environment' }],
@@ -64,6 +66,8 @@ export function createOpenApiDocument(): OpenApiDocument {
       { name: 'Authentication' },
       { name: 'Doctors' },
       { name: 'Booking' },
+      { name: 'Consultations' },
+      { name: 'Prescriptions' },
       { name: 'Payments' },
       { name: 'Admin' },
     ],
@@ -251,6 +255,108 @@ export function createOpenApiDocument(): OpenApiDocument {
           { tag: 'Booking', idempotent: true },
         ),
       },
+      '/api/v1/consultations/{id}': {
+        get: protectedQuery(
+          'getConsultation',
+          'Get an owned or assigned consultation',
+          {
+            '200': jsonResponse('Consultation details', {
+              $ref: '#/components/schemas/Consultation',
+            }),
+          },
+          { tag: 'Consultations', parameters: [pathIdParameter('Consultation ID')] },
+        ),
+      },
+      '/api/v1/consultations/{id}/start': {
+        post: protectedMutation(
+          'startConsultation',
+          'Start a confirmed consultation as the assigned doctor',
+          undefined,
+          {
+            '200': jsonResponse('Consultation started', {
+              $ref: '#/components/schemas/Consultation',
+            }),
+          },
+          'accessBearer',
+          {
+            tag: 'Consultations',
+            idempotent: true,
+            parameters: [pathIdParameter('Consultation ID')],
+          },
+        ),
+      },
+      '/api/v1/consultations/{id}/complete': {
+        post: protectedMutation(
+          'completeConsultation',
+          'Complete an in-progress consultation as the assigned doctor',
+          undefined,
+          {
+            '200': jsonResponse('Consultation completed', {
+              $ref: '#/components/schemas/Consultation',
+            }),
+          },
+          'accessBearer',
+          {
+            tag: 'Consultations',
+            idempotent: true,
+            parameters: [pathIdParameter('Consultation ID')],
+          },
+        ),
+      },
+      '/api/v1/consultations/{id}/cancel': {
+        post: protectedMutation(
+          'cancelConsultation',
+          'Cancel a pending-payment or confirmed consultation and compensate payment/slot state',
+          'CancelConsultationRequest',
+          {
+            '200': jsonResponse('Consultation cancelled', {
+              $ref: '#/components/schemas/Consultation',
+            }),
+          },
+          'accessBearer',
+          {
+            tag: 'Consultations',
+            idempotent: true,
+            parameters: [pathIdParameter('Consultation ID')],
+          },
+        ),
+      },
+      '/api/v1/consultations/{id}/prescriptions': {
+        post: protectedMutation(
+          'createPrescription',
+          'Create an encrypted prescription version after completion as the assigned doctor',
+          'CreatePrescriptionRequest',
+          {
+            '201': jsonResponse('Encrypted prescription created', {
+              $ref: '#/components/schemas/PrescriptionMetadata',
+            }),
+          },
+          'accessBearer',
+          {
+            tag: 'Prescriptions',
+            idempotent: true,
+            parameters: [pathIdParameter('Consultation ID')],
+          },
+        ),
+        get: protectedQuery(
+          'listPrescriptions',
+          'Read decrypted prescriptions as the patient or assigned doctor',
+          {
+            '200': jsonResponse('Authorized prescription versions', {
+              type: 'object',
+              additionalProperties: false,
+              required: ['prescriptions'],
+              properties: {
+                prescriptions: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Prescription' },
+                },
+              },
+            }),
+          },
+          { tag: 'Prescriptions', parameters: [pathIdParameter('Consultation ID')] },
+        ),
+      },
       '/api/v1/webhooks/payments': {
         post: {
           tags: ['Payments'],
@@ -287,6 +393,18 @@ export function createOpenApiDocument(): OpenApiDocument {
           { tag: 'Payments', idempotent: true, parameters: [pathIdParameter('Payment ID')] },
         ),
       },
+      '/api/v1/admin/analytics/overview': {
+        get: protectedQuery(
+          'getAdminAnalyticsOverview',
+          'Get aggregate-only platform analytics',
+          {
+            '200': jsonResponse('Aggregate analytics overview', {
+              $ref: '#/components/schemas/AdminAnalyticsOverview',
+            }),
+          },
+          { tag: 'Admin' },
+        ),
+      },
     },
     components: {
       securitySchemes: {
@@ -306,6 +424,8 @@ export function createOpenApiDocument(): OpenApiDocument {
         RefreshTokenRequest: schemaFromZod(refreshTokenRequestSchema),
         CreateAvailabilitySlotRequest: schemaFromZod(createAvailabilitySlotRequestSchema),
         CreateConsultationRequest: schemaFromZod(createConsultationRequestSchema),
+        CancelConsultationRequest: schemaFromZod(cancelConsultationRequestSchema),
+        CreatePrescriptionRequest: schemaFromZod(createPrescriptionRequestSchema),
         PaymentWebhookRequest: schemaFromZod(paymentWebhookRequestSchema),
         SimulatePaymentRequest: schemaFromZod(simulatePaymentRequestSchema),
         Session: sessionSchema,
@@ -449,6 +569,179 @@ export function createOpenApiDocument(): OpenApiDocument {
             },
           },
         },
+        Consultation: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'id',
+            'patientId',
+            'doctorId',
+            'doctorUserId',
+            'slotId',
+            'status',
+            'mode',
+            'scheduledAt',
+            'startedAt',
+            'endedAt',
+            'cancelReason',
+            'version',
+            'payment',
+          ],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            patientId: { type: 'string', format: 'uuid' },
+            doctorId: { type: 'string', format: 'uuid' },
+            doctorUserId: { type: 'string', format: 'uuid' },
+            slotId: { type: 'string', format: 'uuid' },
+            status: {
+              enum: [
+                'PENDING_PAYMENT',
+                'CONFIRMED',
+                'IN_PROGRESS',
+                'COMPLETED',
+                'CANCELLED',
+                'EXPIRED',
+                'NO_SHOW',
+              ],
+            },
+            mode: { enum: ['VIDEO', 'AUDIO', 'CHAT'] },
+            scheduledAt: { type: 'string', format: 'date-time' },
+            startedAt: { type: ['string', 'null'], format: 'date-time' },
+            endedAt: { type: ['string', 'null'], format: 'date-time' },
+            cancelReason: {
+              type: ['string', 'null'],
+              enum: ['PATIENT_REQUEST', 'DOCTOR_UNAVAILABLE', 'SCHEDULING_CONFLICT', 'OTHER', null],
+            },
+            version: { type: 'integer', minimum: 0 },
+            payment: {
+              oneOf: [{ $ref: '#/components/schemas/ConsultationPayment' }, { type: 'null' }],
+            },
+          },
+        },
+        ConsultationPayment: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'amountMinor', 'currency', 'status'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            amountMinor: { type: 'integer', minimum: 0 },
+            currency: { type: 'string', minLength: 3, maxLength: 3 },
+            status: { enum: ['PENDING', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'REFUNDED'] },
+          },
+        },
+        PrescriptionMetadata: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'consultationId', 'version', 'createdAt'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            consultationId: { type: 'string', format: 'uuid' },
+            version: { type: 'integer', minimum: 1 },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        Prescription: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'consultationId', 'version', 'content', 'createdAt'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            consultationId: { type: 'string', format: 'uuid' },
+            version: { type: 'integer', minimum: 1 },
+            content: { type: 'string', minLength: 1, maxLength: 10_000 },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        AdminAnalyticsOverview: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'generatedAt',
+            'users',
+            'doctorProfiles',
+            'consultations',
+            'payments',
+            'prescriptions',
+          ],
+          properties: {
+            generatedAt: { type: 'string', format: 'date-time' },
+            users: { $ref: '#/components/schemas/UserAggregates' },
+            doctorProfiles: { $ref: '#/components/schemas/DoctorAggregates' },
+            consultations: { $ref: '#/components/schemas/ConsultationAggregates' },
+            payments: { $ref: '#/components/schemas/PaymentAggregates' },
+            prescriptions: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['total'],
+              properties: { total: { type: 'integer', minimum: 0 } },
+            },
+          },
+        },
+        UserAggregates: aggregateCounts(['total', 'patients', 'doctors', 'admins']),
+        DoctorAggregates: aggregateCounts(['total', 'verified']),
+        ConsultationAggregates: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['total', 'byStatus'],
+          properties: {
+            total: { type: 'integer', minimum: 0 },
+            byStatus: {
+              type: 'object',
+              additionalProperties: false,
+              required: [
+                'PENDING_PAYMENT',
+                'CONFIRMED',
+                'IN_PROGRESS',
+                'COMPLETED',
+                'CANCELLED',
+                'EXPIRED',
+                'NO_SHOW',
+              ],
+              properties: Object.fromEntries(
+                [
+                  'PENDING_PAYMENT',
+                  'CONFIRMED',
+                  'IN_PROGRESS',
+                  'COMPLETED',
+                  'CANCELLED',
+                  'EXPIRED',
+                  'NO_SHOW',
+                ].map((status) => [status, { type: 'integer', minimum: 0 }]),
+              ),
+            },
+          },
+        },
+        PaymentAggregates: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'succeeded',
+            'refunded',
+            'capturedAmountMinorByCurrency',
+            'refundedAmountMinorByCurrency',
+          ],
+          properties: {
+            succeeded: { type: 'integer', minimum: 0 },
+            refunded: { type: 'integer', minimum: 0 },
+            capturedAmountMinorByCurrency: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CurrencyAmount' },
+            },
+            refundedAmountMinorByCurrency: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/CurrencyAmount' },
+            },
+          },
+        },
+        CurrencyAmount: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['currency', 'amountMinor'],
+          properties: {
+            currency: { type: 'string', minLength: 3, maxLength: 3 },
+            amountMinor: { type: 'integer', minimum: 0 },
+          },
+        },
         PaymentEventResponse: {
           type: 'object',
           additionalProperties: false,
@@ -521,6 +814,34 @@ function protectedMutation(
       : {}),
     ...(schemaName === undefined ? {} : { requestBody: requestBody(schemaName) }),
     responses: withCommonErrors(responses),
+  };
+}
+
+function protectedQuery(
+  operationId: string,
+  summary: string,
+  responses: Readonly<Record<string, unknown>>,
+  options: {
+    readonly tag: string;
+    readonly parameters?: readonly unknown[];
+  },
+): Readonly<Record<string, unknown>> {
+  return {
+    tags: [options.tag],
+    operationId,
+    summary,
+    security: [{ accessBearer: [] }],
+    ...(options.parameters === undefined ? {} : { parameters: options.parameters }),
+    responses: withCommonErrors(responses),
+  };
+}
+
+function aggregateCounts(fields: readonly string[]): Readonly<Record<string, unknown>> {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: fields,
+    properties: Object.fromEntries(fields.map((field) => [field, { type: 'integer', minimum: 0 }])),
   };
 }
 
