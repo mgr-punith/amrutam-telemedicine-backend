@@ -10,8 +10,7 @@ register/login -> doctor/admin MFA -> browse doctors/slots -> idempotent atomic 
 ```
 
 The generated [OpenAPI schema](openapi/openapi.yaml) contains exactly 22 business endpoints. See
-[architecture](docs/architecture.md), [security and threat model](docs/security.md),
-[delivery progress](docs/PROGRESS.md), and the [five-minute demo script](docs/demo-script.md).
+[architecture](docs/architecture.md), [security and threat model](docs/security.md).
 
 ## Stack and implemented controls
 
