@@ -8,6 +8,9 @@ import type { Environment } from './config/environment.js';
 import { createErrorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { createHttpLogger } from './middleware/http-logger.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
+import { createMetricsMiddleware } from './middleware/metrics.js';
+import type { ApplicationMetrics } from './infra/observability/metrics.js';
+import { createHttpTracingMiddleware } from './infra/observability/tracing.js';
 import type { AnalyticsRouteDependencies } from './modules/admin/analytics-routes.js';
 import { createAnalyticsRouter } from './modules/admin/analytics-routes.js';
 import type { AuthRouteDependencies } from './modules/auth/auth-routes.js';
@@ -29,6 +32,8 @@ export interface AppDependencies {
   readonly environment: Pick<Environment, 'corsAllowedOrigins'>;
   readonly logger: Logger;
   readonly healthController: HealthController;
+  readonly metrics?: ApplicationMetrics;
+  readonly tracingServiceName?: string;
   readonly auth?: AuthRouteDependencies;
   readonly doctors?: DoctorRouteDependencies;
   readonly booking?: BookingRouteDependencies;
@@ -45,7 +50,13 @@ export function createApp(dependencies: AppDependencies): Express {
 
   app.disable('x-powered-by');
   app.use(requestIdMiddleware);
+  if (dependencies.tracingServiceName !== undefined) {
+    app.use(createHttpTracingMiddleware(dependencies.tracingServiceName));
+  }
   app.use(createHttpLogger(dependencies.logger));
+  if (dependencies.metrics !== undefined) {
+    app.use(createMetricsMiddleware(dependencies.metrics));
+  }
   app.use(helmet());
   app.use(
     cors({

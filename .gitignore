@@ -2,6 +2,11 @@ node_modules/
 .npm-cache/
 dist/
 coverage/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
 .env
 .env.*
 !.env.example

@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import type { PrismaClient } from '@prisma/client';
@@ -202,7 +203,7 @@ describe('Stage 4 consultation, prescription, audit, and analytics flow', () => 
     const pendingCancel = await request(app)
       .post(`/api/v1/consultations/${pendingBooking.consultationId}/cancel`)
       .set('Authorization', `Bearer ${patientToken}`)
-      .set('Idempotency-Key', 'stage4-pending-cancel')
+      .set('Idempotency-Key', randomUUID())
       .send({ reason: 'PATIENT_REQUEST' });
     expect(pendingCancel.status).toBe(200);
     expect(pendingCancel.body).toMatchObject({

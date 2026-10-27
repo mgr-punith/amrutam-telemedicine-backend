@@ -3,7 +3,6 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -29,6 +28,33 @@ jobs:
       - run: npm run test:integration
       - run: npm run openapi:check
       - run: npm run build
+      - run: npm audit --audit-level=high
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Scan complete Git history for secrets
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro"
+          ghcr.io/gitleaks/gitleaks:v8.24.3
+          detect --source=/repo --log-opts=--all --redact --verbose --exit-code=1
 
   container:
     runs-on: ubuntu-latest
@@ -39,4 +65,26 @@ jobs:
         with:
           context: .
           push: false
-          tags: amrutam-api:${{ github.sha }}
+          load: true
+          tags: amrutam-api:ci
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.70.0
+          image-ref: amrutam-api:ci
+          scanners: vuln
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+  iac-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: bridgecrewio/checkov-action@c3e106d5f8f4253a6de5110efb41a080f83db294 # v12, Checkov 3.3.30
+        with:
+          directory: infra/terraform
+          framework: terraform
+          quiet: true
+          soft_fail: false
+          output_format: cli

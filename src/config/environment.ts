@@ -11,6 +11,17 @@ const environmentSchema = z
     CORS_ALLOWED_ORIGINS: z.string().min(1).default('http://localhost:3001'),
     DATABASE_URL: z.string().startsWith('postgresql://'),
     REDIS_URL: z.string().startsWith('redis://'),
+    AMRUTAM_SERVICE_NAME: z.string().trim().min(1).max(100).default('amrutam-api'),
+    AMRUTAM_OTEL_EXPORTER_ENDPOINT: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.url().optional(),
+    ),
+    AMRUTAM_WORKER_SCAN_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(3_600_000)
+      .default(60_000),
     AMRUTAM_ENCRYPTION_KEYS: z.string().min(1).optional(),
     AMRUTAM_ACTIVE_ENCRYPTION_KEY_VERSION: z.string().min(1).optional(),
     AMRUTAM_JWT_PRIVATE_KEY_BASE64: z.string().min(1).optional(),
@@ -63,6 +74,9 @@ export type Environment = Readonly<{
   corsAllowedOrigins: readonly string[];
   databaseUrl: string;
   redisUrl: string;
+  serviceName: string;
+  otelExporterEndpoint: string | undefined;
+  workerScanIntervalMs: number;
 }>;
 
 export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Environment {
@@ -86,5 +100,8 @@ export function loadEnvironment(source: NodeJS.ProcessEnv = process.env): Enviro
       .filter((origin) => origin.length > 0),
     databaseUrl: parsed.data.DATABASE_URL,
     redisUrl: parsed.data.REDIS_URL,
+    serviceName: parsed.data.AMRUTAM_SERVICE_NAME,
+    otelExporterEndpoint: parsed.data.AMRUTAM_OTEL_EXPORTER_ENDPOINT,
+    workerScanIntervalMs: parsed.data.AMRUTAM_WORKER_SCAN_INTERVAL_MS,
   };
 }

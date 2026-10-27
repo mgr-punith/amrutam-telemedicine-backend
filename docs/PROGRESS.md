@@ -214,3 +214,77 @@ Known limitations / deferred:
   implementation would run the external refund asynchronously with retry/backoff and reconciliation.
 - Consultation notes, diagnosis coding, provider integrations, and broader admin drill-down APIs are
   deliberately excluded from the one-day assignment scope.
+
+## M5 / Stage 5 — Observability, worker, infrastructure, CI, and submission documents
+
+Status: Implemented and locally verified; PR #5 scanner corrections await push and remote CI.
+
+Implemented:
+
+- Prometheus registry and separate metrics servers for API and worker. Exported signals include
+  normalized-route HTTP count/duration, booking outcomes, payment outcomes, expired holds, and Node
+  process/runtime metrics.
+- OpenTelemetry SDK with OTLP HTTP export, Pino/Redis/Prisma instrumentation, PHI-safe manual HTTP
+  spans, and manual booking/payment/worker spans. Route templates strip UUIDs and query strings.
+- Pino completion/error logs now include request ID, method, normalized route, status, and duration
+  without logging request or response bodies.
+- BullMQ maintenance worker and recurring scheduler for abandoned held slots. A bounded
+  `FOR UPDATE SKIP LOCKED` transaction expires pending payment/consultation state, releases the slot,
+  and appends an audit record; jobs retry five times with exponential backoff.
+- Docker Compose migration gate plus required API, worker, PostgreSQL and Redis services. The
+  `observability` profile adds the OpenTelemetry Collector, Jaeger, and Prometheus.
+- Compact AWS Terraform reference for two-AZ VPC/subnets, ALB/WAF/TLS, ECS Fargate API/worker, RDS
+  PostgreSQL, Redis, ECR, KMS, Secrets Manager, CloudWatch logs, VPC flow logs, backups, deletion
+  protection, and API autoscaling.
+- GitHub Actions now runs on every push and pull request with quality/integration/OpenAPI/build/audit,
+  Docker build plus Trivy, Terraform format/validate, full-history Gitleaks, and Checkov.
+- Required README, 2–4 page architecture document, security checklist/threat model, and timed demo
+  script. Architecture covers data flow, booking sequence, ER model, API schema, retries/backoff,
+  partitioning, caching/concurrency, transactions/sagas, and backup/DR.
+
+Verification completed:
+
+- Unit suite: 20 files and 49 tests pass. New tests prove safe normalized telemetry labels and
+  business/worker metric export.
+- Stage 5 PostgreSQL/Redis integration proof atomically expires an overdue hold, expires its payment
+  and consultation, releases the slot, writes the audit record, and confirms metrics contain no
+  consultation/payment IDs.
+- Docker Compose validates in default and `observability` profile modes with command-scoped
+  placeholder secrets; no local `.env` was created or modified.
+- Terraform 1.9.8 formats and validates using AWS provider 5.100.0.
+- Initial Checkov 3.2.495 result: 163 passed, 0 failed, 6 documented skips. CI used the newer
+  Checkov 3.3.30, exposing an availability-zone identity requirement; see the correction below.
+
+PR #5 CI correction (2026-10-27):
+
+- Inspected the failing logs with `gh run view 40540076067 --log-failed`: the Trivy action tag
+  omitted its `v` prefix, Checkov `CKV_AWS_394` required pinned zone identities, and Gitleaks
+  8.24.3 detected a non-secret idempotency test fixture in commit `1e6fa97`.
+- Pinned published Trivy/Checkov action revisions and matching scanner versions. Gitleaks now
+  explicitly scans all fetched Git history with a failing exit code and no PR write permission.
+- Terraform uses two validated, ordered zone IDs and checks that both are available in the region.
+  No scanner rule was disabled to address the zone identity finding.
+- Flagged idempotency fixtures in the Stage 3/4/5 tests now generate keys at runtime. The ignore
+  file contains four exact historical fingerprints for these fixtures and the public RFC 6238 TOTP
+  vector, including two older fixture findings exposed by the full-history 8.24.3 scan.
+- Trivy 0.70.0 found ten fixable high findings in npm bundled in the Node base image. The final
+  runtime image now omits npm/npx; build and migration stages keep npm. After
+  `docker build --pull -t amrutam-api:ci .`, the same Trivy scan exits 0 with zero fixable
+  high/critical findings. A disposable runtime smoke test served liveness and metrics without npm.
+- `npm run lint`, `npm run typecheck`, `npm test` (49 tests), `npm run test:integration` (16 tests),
+  `npm run openapi:check`, `npm run build`, and `npm audit --audit-level=high` pass (audit: zero).
+  Terraform 1.9.8 `fmt -check -recursive` and `validate` pass.
+- Matching-version scanner verification: Checkov 3.3.30 reports 168 passed, 0 failed, and the same
+  6 documented skips. Gitleaks 8.24.3 `detect --log-opts=--all` scans 6 commits with no leaks;
+  a separate `gitleaks dir` scan of current tracked files also reports no leaks. Both use exit code 1
+  for findings. `npm run format:check`, CI YAML parsing, and `git diff --check` pass.
+- Remote CI still needs the correction commit pushed; the old failed run is not evidence about
+  this new diff. No automatic commit or push was performed. Local `.env` remains ignored and untouched.
+
+Documented-only / deferred:
+
+- The 100k consultations/day, p95 latency, and 99.95% availability values are design objectives, not
+  fabricated benchmark claims. Production-like load, failover, and restore exercises remain required.
+- Cross-region snapshot copy/restore automation, read replicas, automated monthly partition
+  management, distributed rate limiting, provider reconciliation, immutable audit archive, and full
+  Grafana/alert suites remain production extensions.

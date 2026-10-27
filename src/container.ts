@@ -10,6 +10,7 @@ import { PasswordHasher } from './infra/crypto/password-hasher.js';
 import { TokenService } from './infra/crypto/token-service.js';
 import { TotpService } from './infra/crypto/totp-service.js';
 import { createLogger } from './infra/logger.js';
+import { ApplicationMetrics } from './infra/observability/metrics.js';
 import { createAuthenticate } from './middleware/authenticate.js';
 import { requireRoles } from './middleware/authorize.js';
 import { createIdempotencyMiddleware } from './middleware/idempotency.js';
@@ -80,6 +81,7 @@ export function createContainer(overrides: ContainerOverrides = {}) {
   const environment = loadEnvironment();
   const securityEnvironment = loadSecurityEnvironment();
   const logger = createLogger(environment);
+  const metrics = new ApplicationMetrics(environment.serviceName);
   const prisma = overrides.prisma ?? new PrismaClient();
   const readinessChecks = overrides.readinessChecks ?? [
     {
@@ -123,7 +125,7 @@ export function createContainer(overrides: ContainerOverrides = {}) {
     new DoctorService(new PrismaDoctorRepository(prisma)),
   );
   const bookingController = new BookingController(
-    new BookingService(new PrismaBookingRepository(prisma)),
+    new BookingService(new PrismaBookingRepository(prisma), metrics),
   );
   const consultationController = new ConsultationController(
     new ConsultationService(new PrismaConsultationRepository(prisma)),
@@ -132,6 +134,7 @@ export function createContainer(overrides: ContainerOverrides = {}) {
     new PaymentService(
       new PrismaPaymentRepository(prisma),
       securityEnvironment.paymentWebhookSecret,
+      metrics,
     ),
   );
   const prescriptionController = new PrescriptionController(
@@ -144,6 +147,8 @@ export function createContainer(overrides: ContainerOverrides = {}) {
     environment,
     logger,
     healthController,
+    metrics,
+    tracingServiceName: environment.serviceName,
     auth: {
       controller: authController,
       authenticateAccess,
@@ -191,5 +196,5 @@ export function createContainer(overrides: ContainerOverrides = {}) {
     docsEnabled: environment.nodeEnv !== 'production',
   });
 
-  return { app, environment, logger, prisma } as const;
+  return { app, environment, logger, metrics, prisma } as const;
 }
