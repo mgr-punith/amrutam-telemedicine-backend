@@ -17,6 +17,8 @@ database schema, encrypted demo seed, and security primitives needed by the auth
 - Patient registration/login, doctor/admin MFA, rotating refresh tokens, logout, RBAC/ownership
   foundations, authentication rate limiting, and safe audit records.
 - Generated OpenAPI 3.1 and executable Swagger UI at `http://localhost:3000/docs` in development.
+- Verified doctor search/profile/slot listing, doctor availability, admin verification, idempotent
+  atomic booking, signed/deduplicated mock payment events, and success/failure compensation.
 
 See [delivery progress](docs/PROGRESS.md) for verified results and current limitations.
 
@@ -73,5 +75,9 @@ Authentication routes are available under `/api/v1/auth`. Open Swagger UI at `/d
 registration, login, MFA, refresh, and logout. Use the generated doctor/admin TOTP secret from your
 local `.env`; secrets and protected data are never included in the OpenAPI artifact.
 
-Doctor browsing, booking/payment, consultation/prescription, observability, Terraform, and the final
-security documentation are delivered in later milestones defined in `AGENTS.md`.
+Doctor browsing and booking/payment are available in Swagger. Every authenticated non-auth mutation
+requires an `Idempotency-Key`; payment webhooks require `X-Payment-Signature`. The dev payment
+simulator is available only outside production.
+
+Consultation lifecycle/prescriptions, observability, Terraform, and the final security documentation
+are delivered in later milestones defined in `AGENTS.md`.

@@ -121,5 +121,47 @@ Known limitations / deferred:
   it with Redis without changing the route contract.
 - Prisma 6's CLI config originally resolved a vulnerable `deepmerge-ts`; the lockfile now enforces
   the patched 8.0.2 release through an npm override and Prisma validation/client generation pass.
-- Doctor/slot browsing, idempotent booking, payment compensation, and consultation ownership usage
-  are the next Stage 3 slice.
+
+## M3 / Stage 3 — Doctors, idempotent booking, and payment compensation
+
+Status: Complete
+
+Implemented:
+
+- Verified-doctor search/filtering by free text, specialization, city, language, and maximum fee,
+  plus verified profile detail and future available-slot listing.
+- Verified doctors can create bounded future availability; PostgreSQL exclusion constraints reject
+  overlapping slots. Admins can verify pending doctors. Both actions are audited and idempotent.
+- Authenticated non-auth mutations require a bounded `Idempotency-Key`. The request hash binds user,
+  method, path, and canonical body. Matching completed requests replay stored responses; mismatches
+  return `422`; active requests return `409`; unexpected `5xx` responses are not retained.
+- Booking uses one parameterized conditional PostgreSQL `UPDATE ... RETURNING` inside a short
+  transaction to claim only future available slots for verified doctors. The same transaction
+  creates the pending consultation, mock payment, and safe audit record.
+- Payment webhooks verify HMAC-SHA256 over the exact raw request body. Event IDs are inserted with
+  `ON CONFLICT DO NOTHING` for concurrent-safe deduplication; reuse with a different canonical event
+  returns `409`.
+- Payment success atomically marks payment succeeded, consultation confirmed, and slot booked.
+  Failure/expiry atomically marks payment failed/expired, consultation expired, and releases the
+  slot. Transition row counts are asserted so partial state cannot commit.
+- A non-production admin-only, idempotent payment simulator exercises the same compensation service.
+- OpenAPI 3.1 and Swagger document all Stage 3 routes, idempotency headers, and webhook signature.
+
+Verification completed:
+
+- `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass.
+- Unit suite: 15 files and 38 tests pass.
+- Integration suite: 3 files and 12 tests pass against isolated PostgreSQL 16 and Redis 7 containers.
+- Integration proof covers verified search/filtering and slot listing, availability replay/mismatch/
+  in-progress idempotency, missing-key rejection, exactly one concurrent booking winner, stored
+  replay, forged webhook rejection, simultaneous duplicate events, event-ID mismatch rejection,
+  failure compensation and slot release, success confirmation, admin verification, audit records,
+  and the dev simulator.
+
+Known limitations / deferred:
+
+- Held-slot expiry is compensated by explicit failed/expired payment events today. A later worker can
+  scan `held_until` for abandoned payments; correctness does not depend on an external provider call
+  inside the booking transaction.
+- Consultation lifecycle, encrypted prescriptions, access ownership on consultation reads, and
+  aggregate admin analytics are the next Stage 4 slice.

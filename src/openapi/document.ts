@@ -7,6 +7,16 @@ import {
   refreshTokenRequestSchema,
   registerRequestSchema,
 } from '../modules/auth/auth-contracts.js';
+import { createConsultationRequestSchema } from '../modules/consultations/booking-contracts.js';
+import {
+  createAvailabilitySlotRequestSchema,
+  doctorSearchQuerySchema,
+  slotListQuerySchema,
+} from '../modules/doctors/doctor-contracts.js';
+import {
+  paymentWebhookRequestSchema,
+  simulatePaymentRequestSchema,
+} from '../modules/payments/payment-contracts.js';
 
 type OpenApiDocument = Readonly<Record<string, unknown>>;
 
@@ -45,11 +55,18 @@ export function createOpenApiDocument(): OpenApiDocument {
     openapi: '3.1.0',
     info: {
       title: 'Amrutam Telemedicine API',
-      version: '0.2.0',
+      version: '0.3.0',
       description: 'Security-first telemedicine backend demonstration API.',
     },
     servers: [{ url: 'http://localhost:3000', description: 'Local Docker environment' }],
-    tags: [{ name: 'Health' }, { name: 'Authentication' }],
+    tags: [
+      { name: 'Health' },
+      { name: 'Authentication' },
+      { name: 'Doctors' },
+      { name: 'Booking' },
+      { name: 'Payments' },
+      { name: 'Admin' },
+    ],
     paths: {
       '/health/live': {
         get: {
@@ -139,6 +156,137 @@ export function createOpenApiDocument(): OpenApiDocument {
           'accessBearer',
         ),
       },
+      '/api/v1/doctors': {
+        get: {
+          tags: ['Doctors'],
+          operationId: 'searchDoctors',
+          summary: 'Search verified doctors',
+          parameters: queryParameters(doctorSearchQuerySchema),
+          responses: {
+            '200': jsonResponse('Verified doctors', {
+              type: 'object',
+              required: ['doctors'],
+              properties: {
+                doctors: { type: 'array', items: { $ref: '#/components/schemas/DoctorSummary' } },
+              },
+            }),
+            '400': errorResponse('Validation failed'),
+          },
+        },
+      },
+      '/api/v1/doctors/{id}': {
+        get: {
+          tags: ['Doctors'],
+          operationId: 'getDoctor',
+          summary: 'Get a verified doctor profile',
+          parameters: [pathIdParameter('Doctor ID')],
+          responses: {
+            '200': jsonResponse('Verified doctor', { $ref: '#/components/schemas/DoctorDetail' }),
+            '404': errorResponse('Doctor not found'),
+          },
+        },
+      },
+      '/api/v1/doctors/{id}/slots': {
+        get: {
+          tags: ['Doctors'],
+          operationId: 'listDoctorSlots',
+          summary: 'List future available slots for a verified doctor',
+          parameters: [pathIdParameter('Doctor ID'), ...queryParameters(slotListQuerySchema)],
+          responses: {
+            '200': jsonResponse('Available slots', {
+              type: 'object',
+              required: ['slots'],
+              properties: {
+                slots: { type: 'array', items: { $ref: '#/components/schemas/AvailabilitySlot' } },
+              },
+            }),
+            '400': errorResponse('Validation failed'),
+          },
+        },
+      },
+      '/api/v1/availability/slots': {
+        post: protectedMutation(
+          'createAvailabilitySlot',
+          'Create availability for the authenticated verified doctor',
+          'CreateAvailabilitySlotRequest',
+          {
+            '201': jsonResponse('Availability created', {
+              $ref: '#/components/schemas/AvailabilitySlot',
+            }),
+          },
+          'accessBearer',
+          { tag: 'Doctors', idempotent: true },
+        ),
+      },
+      '/api/v1/admin/doctors/{id}/verify': {
+        post: protectedMutation(
+          'verifyDoctor',
+          'Verify a doctor profile',
+          undefined,
+          {
+            '200': jsonResponse('Doctor verified', {
+              type: 'object',
+              required: ['id', 'verificationStatus'],
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                verificationStatus: { const: 'VERIFIED' },
+              },
+            }),
+          },
+          'accessBearer',
+          { tag: 'Admin', idempotent: true, parameters: [pathIdParameter('Doctor ID')] },
+        ),
+      },
+      '/api/v1/consultations': {
+        post: protectedMutation(
+          'createConsultation',
+          'Atomically claim a slot and create pending consultation/payment records',
+          'CreateConsultationRequest',
+          {
+            '201': jsonResponse('Pending booking created', {
+              $ref: '#/components/schemas/PendingBooking',
+            }),
+          },
+          'accessBearer',
+          { tag: 'Booking', idempotent: true },
+        ),
+      },
+      '/api/v1/webhooks/payments': {
+        post: {
+          tags: ['Payments'],
+          operationId: 'processPaymentWebhook',
+          summary: 'Process a signed mock payment event',
+          parameters: [
+            {
+              in: 'header',
+              name: 'X-Payment-Signature',
+              required: true,
+              schema: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+              description: 'Hex HMAC-SHA256 of the exact raw JSON body.',
+            },
+          ],
+          requestBody: requestBody('PaymentWebhookRequest'),
+          responses: withCommonErrors({
+            '200': jsonResponse('Event accepted or safely replayed', {
+              $ref: '#/components/schemas/PaymentEventResponse',
+            }),
+          }),
+        },
+      },
+      '/api/v1/dev/payments/{id}/simulate': {
+        post: protectedMutation(
+          'simulatePayment',
+          'Simulate payment result outside production',
+          'SimulatePaymentRequest',
+          {
+            '200': jsonResponse('Payment result applied', {
+              $ref: '#/components/schemas/PaymentEventResponse',
+            }),
+          },
+          'accessBearer',
+          { tag: 'Payments', idempotent: true, parameters: [pathIdParameter('Payment ID')] },
+        ),
+      },
     },
     components: {
       securitySchemes: {
@@ -156,6 +304,10 @@ export function createOpenApiDocument(): OpenApiDocument {
         MfaCodeRequest: schemaFromZod(mfaCodeRequestSchema),
         MfaVerifyRequest: schemaFromZod(mfaVerifyRequestSchema),
         RefreshTokenRequest: schemaFromZod(refreshTokenRequestSchema),
+        CreateAvailabilitySlotRequest: schemaFromZod(createAvailabilitySlotRequestSchema),
+        CreateConsultationRequest: schemaFromZod(createConsultationRequestSchema),
+        PaymentWebhookRequest: schemaFromZod(paymentWebhookRequestSchema),
+        SimulatePaymentRequest: schemaFromZod(simulatePaymentRequestSchema),
         Session: sessionSchema,
         LoginSession: {
           type: 'object',
@@ -212,6 +364,102 @@ export function createOpenApiDocument(): OpenApiDocument {
             checks: { type: 'object', additionalProperties: { enum: ['up', 'down'] } },
           },
         },
+        DoctorSummary: {
+          type: 'object',
+          required: [
+            'id',
+            'fullName',
+            'specialization',
+            'experienceYears',
+            'consultationFeeMinor',
+            'currency',
+            'city',
+            'languages',
+            'ratingAvg',
+            'ratingCount',
+            'verificationStatus',
+          ],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            fullName: { type: 'string' },
+            specialization: { type: 'string' },
+            experienceYears: { type: 'integer', minimum: 0 },
+            consultationFeeMinor: { type: 'integer', minimum: 0 },
+            currency: { type: 'string', minLength: 3, maxLength: 3 },
+            city: { type: 'string' },
+            languages: { type: 'array', items: { type: 'string' } },
+            ratingAvg: { type: 'number', minimum: 0, maximum: 5 },
+            ratingCount: { type: 'integer', minimum: 0 },
+            verificationStatus: { const: 'VERIFIED' },
+          },
+        },
+        DoctorDetail: {
+          allOf: [
+            { $ref: '#/components/schemas/DoctorSummary' },
+            {
+              type: 'object',
+              required: ['qualifications'],
+              properties: { qualifications: { type: 'array', items: { type: 'string' } } },
+            },
+          ],
+        },
+        AvailabilitySlot: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'doctorId', 'startTime', 'endTime', 'status'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            doctorId: { type: 'string', format: 'uuid' },
+            startTime: { type: 'string', format: 'date-time' },
+            endTime: { type: 'string', format: 'date-time' },
+            status: { const: 'AVAILABLE' },
+          },
+        },
+        PendingBooking: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'id',
+            'patientId',
+            'doctorId',
+            'slotId',
+            'status',
+            'mode',
+            'scheduledAt',
+            'payment',
+          ],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            patientId: { type: 'string', format: 'uuid' },
+            doctorId: { type: 'string', format: 'uuid' },
+            slotId: { type: 'string', format: 'uuid' },
+            status: { const: 'PENDING_PAYMENT' },
+            mode: { enum: ['VIDEO', 'AUDIO', 'CHAT'] },
+            scheduledAt: { type: 'string', format: 'date-time' },
+            payment: {
+              type: 'object',
+              required: ['id', 'status', 'amountMinor', 'currency', 'providerReference'],
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                status: { const: 'PENDING' },
+                amountMinor: { type: 'integer', minimum: 0 },
+                currency: { type: 'string' },
+                providerReference: { type: 'string' },
+              },
+            },
+          },
+        },
+        PaymentEventResponse: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['received', 'duplicate', 'paymentId'],
+          properties: {
+            received: { const: true },
+            duplicate: { type: 'boolean' },
+            paymentId: { type: ['string', 'null'], format: 'uuid' },
+            paymentStatus: { enum: ['PENDING', 'SUCCEEDED', 'FAILED', 'EXPIRED', 'REFUNDED'] },
+          },
+        },
       },
     },
   };
@@ -256,15 +504,69 @@ function protectedMutation(
   schemaName: string | undefined,
   responses: Readonly<Record<string, unknown>>,
   scheme: 'accessBearer' | 'mfaBearer',
+  options: {
+    readonly tag?: string;
+    readonly idempotent?: boolean;
+    readonly parameters?: readonly unknown[];
+  } = {},
 ): Readonly<Record<string, unknown>> {
   return {
-    tags: ['Authentication'],
+    tags: [options.tag ?? 'Authentication'],
     operationId,
     summary,
     security: [{ [scheme]: [] }],
+    ...(options.parameters === undefined ? {} : { parameters: options.parameters }),
+    ...(options.idempotent === true
+      ? { parameters: [...(options.parameters ?? []), idempotencyKeyParameter()] }
+      : {}),
     ...(schemaName === undefined ? {} : { requestBody: requestBody(schemaName) }),
     responses: withCommonErrors(responses),
   };
+}
+
+function pathIdParameter(description: string): Readonly<Record<string, unknown>> {
+  return {
+    in: 'path',
+    name: 'id',
+    required: true,
+    description,
+    schema: { type: 'string', format: 'uuid' },
+  };
+}
+
+function idempotencyKeyParameter(): Readonly<Record<string, unknown>> {
+  return {
+    in: 'header',
+    name: 'Idempotency-Key',
+    required: true,
+    schema: { type: 'string', minLength: 8, maxLength: 128, pattern: '^[A-Za-z0-9._:-]+$' },
+  };
+}
+
+function queryParameters(schema: z.ZodType): readonly Readonly<Record<string, unknown>>[] {
+  const jsonSchema = schemaFromZod(schema);
+  if (
+    typeof jsonSchema !== 'object' ||
+    jsonSchema === null ||
+    !('properties' in jsonSchema) ||
+    typeof jsonSchema.properties !== 'object' ||
+    jsonSchema.properties === null
+  ) {
+    return [];
+  }
+  const required =
+    'required' in jsonSchema && Array.isArray(jsonSchema.required) ? jsonSchema.required : [];
+  const properties = jsonSchema.properties as Readonly<Record<string, unknown>>;
+  return Object.entries(properties).map(([name, propertySchema]) => ({
+    in: 'query',
+    name,
+    required: required.includes(name),
+    schema: propertySchema,
+  }));
+}
+
+function errorResponse(description: string): Readonly<Record<string, unknown>> {
+  return jsonResponse(description, { $ref: '#/components/schemas/Error' });
 }
 
 function withCommonErrors(
@@ -274,7 +576,11 @@ function withCommonErrors(
     ...responses,
     '400': jsonResponse('Validation failed', { $ref: '#/components/schemas/Error' }),
     '401': jsonResponse('Authentication failed', { $ref: '#/components/schemas/Error' }),
+    '403': jsonResponse('Authorization failed', { $ref: '#/components/schemas/Error' }),
     '409': jsonResponse('Request conflicts with current state', {
+      $ref: '#/components/schemas/Error',
+    }),
+    '422': jsonResponse('Idempotency key conflicts with a different request', {
       $ref: '#/components/schemas/Error',
     }),
     '429': jsonResponse('Rate limit exceeded', { $ref: '#/components/schemas/Error' }),
