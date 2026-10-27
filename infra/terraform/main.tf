@@ -1,11 +1,22 @@
 data "aws_availability_zones" "available" {
   state = "available"
+
+  filter {
+    name   = "zone-id"
+    values = var.availability_zone_ids
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = length(self.zone_ids) == 2
+      error_message = "Both selected availability zone IDs must be available in aws_region."
+    }
+  }
 }
 
 data "aws_caller_identity" "current" {}
 
 locals {
-  availability_zones = slice(data.aws_availability_zones.available.names, 0, 2)
   common_environment = [
     { name = "NODE_ENV", value = "production" },
     { name = "LOG_LEVEL", value = "info" },
@@ -118,7 +129,7 @@ resource "aws_subnet" "public" {
   count = 2
 
   vpc_id                  = aws_vpc.main.id
-  availability_zone       = local.availability_zones[count.index]
+  availability_zone_id    = var.availability_zone_ids[count.index]
   cidr_block              = cidrsubnet(var.vpc_cidr, 4, count.index)
   map_public_ip_on_launch = false
 }
@@ -126,9 +137,9 @@ resource "aws_subnet" "public" {
 resource "aws_subnet" "private" {
   count = 2
 
-  vpc_id            = aws_vpc.main.id
-  availability_zone = local.availability_zones[count.index]
-  cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index + 8)
+  vpc_id               = aws_vpc.main.id
+  availability_zone_id = var.availability_zone_ids[count.index]
+  cidr_block           = cidrsubnet(var.vpc_cidr, 4, count.index + 8)
 }
 
 resource "aws_eip" "nat" {

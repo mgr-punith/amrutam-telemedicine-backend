@@ -22,7 +22,9 @@ FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
-RUN addgroup -S app && adduser -S -G app app
+# Runtime starts with node directly; keep npm and its dependency tree in build stages only.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+  && addgroup -S app && adduser -S -G app app
 COPY --from=production-dependencies --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build --chown=app:app /app/dist ./dist

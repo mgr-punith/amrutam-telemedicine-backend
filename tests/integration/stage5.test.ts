@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import type { PrismaClient } from '@prisma/client';
@@ -65,7 +66,7 @@ describe('Stage 5 observability and worker compensation', () => {
     const slotResponse = await request(app)
       .post('/api/v1/availability/slots')
       .set('Authorization', `Bearer ${doctorToken}`)
-      .set('Idempotency-Key', 'stage5-expiry-slot')
+      .set('Idempotency-Key', randomUUID())
       .send({
         startTime: '2031-05-01T10:00:00.000Z',
         endTime: '2031-05-01T10:30:00.000Z',
@@ -76,7 +77,7 @@ describe('Stage 5 observability and worker compensation', () => {
     const bookingResponse = await request(app)
       .post('/api/v1/consultations')
       .set('Authorization', `Bearer ${patientToken}`)
-      .set('Idempotency-Key', 'stage5-expiry-booking')
+      .set('Idempotency-Key', randomUUID())
       .send({ slotId, mode: 'VIDEO' });
     expect(bookingResponse.status).toBe(201);
     const consultationId = requireString(bookingResponse.body, 'id');

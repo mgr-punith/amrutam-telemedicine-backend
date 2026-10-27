@@ -20,3 +20,7 @@ terraform -chdir=infra/terraform validate
 An actual deployment additionally requires an ACM certificate ARN, a Redis auth token supplied as
 a sensitive CI variable, approved CORS origins, remote encrypted Terraform state with locking, and
 a populated application secret. No resources are applied by CI.
+
+`availability_zone_ids` pins the two subnet locations (default `aps1-az1` and `aps1-az2` in
+`ap-south-1`). Select two zone IDs in the target region when changing `aws_region`. Explicit,
+ordered IDs keep subnet placement stable if AWS adds another availability zone.

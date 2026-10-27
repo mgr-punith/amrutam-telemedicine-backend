@@ -88,8 +88,12 @@ good state, and document corrective actions. Restore and key-rotation exercises 
 
 Verified locally: unit/integration tests, ciphertext-at-rest checks, IDOR/admin denial, idempotency and
 concurrency proof, live dependency audit, full-history Gitleaks scan, Docker build, Terraform validate,
-and Checkov. The Gitleaks ignore file contains one exact fingerprint for the public RFC 6238 Appendix
-B test vector already present in pushed history; it does not suppress new findings.
+and Checkov. The Gitleaks ignore file contains four exact historical fingerprints: the public RFC 6238
+Appendix B test vector and three non-secret idempotency fixtures. The flagged idempotency fixtures
+now generate UUIDs at runtime; these exceptions do not suppress new findings. CI scans all fetched Git history using Gitleaks
+8.24.3. The runtime image omits npm/npx (retained in build stages), removing ten fixable high findings
+from the base image's bundled npm dependencies; Trivy 0.70.0 passed the rebuilt image at the
+high/critical threshold with `--ignore-unfixed`.
 
 Deferred: external penetration test, DAST, production SBOM signing, real payment/video providers,
 formal HIPAA/DISHA/GDPR assessment, tamper-evident audit archive, automated cross-region restore,

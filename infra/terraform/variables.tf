@@ -10,6 +10,21 @@ variable "aws_region" {
   default     = "ap-south-1"
 }
 
+variable "availability_zone_ids" {
+  description = "Two distinct, explicitly selected AZ IDs in aws_region; stable subnet identities even when AWS adds zones."
+  type        = list(string)
+  default     = ["aps1-az1", "aps1-az2"]
+
+  validation {
+    condition = (
+      length(var.availability_zone_ids) == 2 &&
+      length(distinct(var.availability_zone_ids)) == 2 &&
+      alltrue([for id in var.availability_zone_ids : can(regex("^[a-z0-9]+-az[0-9]+$", id))])
+    )
+    error_message = "Select exactly two distinct availability zone IDs, such as aps1-az1 and aps1-az2."
+  }
+}
+
 variable "vpc_cidr" {
   description = "CIDR for the application VPC."
   type        = string

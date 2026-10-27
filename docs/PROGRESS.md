@@ -217,7 +217,7 @@ Known limitations / deferred:
 
 ## M5 / Stage 5 — Observability, worker, infrastructure, CI, and submission documents
 
-Status: Complete
+Status: Implemented and locally verified; PR #5 scanner corrections await push and remote CI.
 
 Implemented:
 
@@ -244,7 +244,7 @@ Implemented:
 
 Verification completed:
 
-- Unit suite: 20 files and 48 tests pass. New tests prove safe normalized telemetry labels and
+- Unit suite: 20 files and 49 tests pass. New tests prove safe normalized telemetry labels and
   business/worker metric export.
 - Stage 5 PostgreSQL/Redis integration proof atomically expires an overdue hold, expires its payment
   and consultation, releases the slot, writes the audit record, and confirms metrics contain no
@@ -252,9 +252,34 @@ Verification completed:
 - Docker Compose validates in default and `observability` profile modes with command-scoped
   placeholder secrets; no local `.env` was created or modified.
 - Terraform 1.9.8 formats and validates using AWS provider 5.100.0.
-- Checkov result: 163 passed, 0 failed, 6 documented skips. Full-history Gitleaks reports no
-  unapproved findings; the only ignore is the exact fingerprint of the public RFC 6238 test vector
-  already present in pushed history.
+- Initial Checkov 3.2.495 result: 163 passed, 0 failed, 6 documented skips. CI used the newer
+  Checkov 3.3.30, exposing an availability-zone identity requirement; see the correction below.
+
+PR #5 CI correction (2026-10-27):
+
+- Inspected the failing logs with `gh run view 40540076067 --log-failed`: the Trivy action tag
+  omitted its `v` prefix, Checkov `CKV_AWS_394` required pinned zone identities, and Gitleaks
+  8.24.3 detected a non-secret idempotency test fixture in commit `1e6fa97`.
+- Pinned published Trivy/Checkov action revisions and matching scanner versions. Gitleaks now
+  explicitly scans all fetched Git history with a failing exit code and no PR write permission.
+- Terraform uses two validated, ordered zone IDs and checks that both are available in the region.
+  No scanner rule was disabled to address the zone identity finding.
+- Flagged idempotency fixtures in the Stage 3/4/5 tests now generate keys at runtime. The ignore
+  file contains four exact historical fingerprints for these fixtures and the public RFC 6238 TOTP
+  vector, including two older fixture findings exposed by the full-history 8.24.3 scan.
+- Trivy 0.70.0 found ten fixable high findings in npm bundled in the Node base image. The final
+  runtime image now omits npm/npx; build and migration stages keep npm. After
+  `docker build --pull -t amrutam-api:ci .`, the same Trivy scan exits 0 with zero fixable
+  high/critical findings. A disposable runtime smoke test served liveness and metrics without npm.
+- `npm run lint`, `npm run typecheck`, `npm test` (49 tests), `npm run test:integration` (16 tests),
+  `npm run openapi:check`, `npm run build`, and `npm audit --audit-level=high` pass (audit: zero).
+  Terraform 1.9.8 `fmt -check -recursive` and `validate` pass.
+- Matching-version scanner verification: Checkov 3.3.30 reports 168 passed, 0 failed, and the same
+  6 documented skips. Gitleaks 8.24.3 `detect --log-opts=--all` scans 6 commits with no leaks;
+  a separate `gitleaks dir` scan of current tracked files also reports no leaks. Both use exit code 1
+  for findings. `npm run format:check`, CI YAML parsing, and `git diff --check` pass.
+- Remote CI still needs the correction commit pushed; the old failed run is not evidence about
+  this new diff. No automatic commit or push was performed. Local `.env` remains ignored and untouched.
 
 Documented-only / deferred:
 

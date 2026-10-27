@@ -1,2 +1,7 @@
 # Public RFC 6238 Appendix B SHA-1 test vector in historical commit 45903f1.
 45903f1930d8e74abcad29394df195a1d63a76be:tests/unit/totp-service.test.ts:generic-api-key:27
+# Non-secret idempotency fixture in the already-pushed Stage 5 test (now generated at runtime).
+1e6fa97dd8770f52f84b7de2a04a15f590bcd69a:tests/integration/stage5.test.ts:generic-api-key:68
+# Non-secret idempotency fixtures from Stages 3 and 4, identified by Gitleaks 8.24.3.
+ed9957ffda3fffbb676932729cfbc3352abb0a28:tests/integration/stage3.test.ts:generic-api-key:163
+f469007f9a5e637a3d06688f59cbad49f3366804:tests/integration/stage4.test.ts:generic-api-key:205

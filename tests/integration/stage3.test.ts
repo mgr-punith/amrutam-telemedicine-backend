@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import type { PrismaClient } from '@prisma/client';
@@ -160,7 +161,7 @@ describe('Stage 3 doctor, booking, idempotency, and payment flow', () => {
     const verifyResponse = await request(app)
       .post(`/api/v1/admin/doctors/${pendingDoctorId}/verify`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .set('Idempotency-Key', 'verify-doctor-0009')
+      .set('Idempotency-Key', randomUUID())
       .send({});
     expect(verifyResponse.status).toBe(200);
     expect(await prisma.doctor.findUnique({ where: { id: pendingDoctorId } })).toMatchObject({
