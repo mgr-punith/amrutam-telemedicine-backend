@@ -60,7 +60,7 @@ export function createOpenApiDocument(): OpenApiDocument {
       version: '0.4.0',
       description: 'Security-first telemedicine backend demonstration API.',
     },
-    servers: [{ url: 'http://localhost:3000', description: 'Local Docker environment' }],
+    servers: [{ url: '/', description: 'Current API origin' }],
     tags: [
       { name: 'Health' },
       { name: 'Authentication' },

@@ -11,12 +11,13 @@
     "deepmerge-ts": "8.0.2"
   },
   "scripts": {
-    "dev": "tsx --import ./src/instrumentation.ts watch src/server.ts",
+    "dev": "tsx watch --import ./src/instrumentation.ts src/server.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node --import ./dist/instrumentation.js dist/server.js",
     "start:worker": "node --import ./dist/instrumentation.js dist/worker.js",
-    "dev:worker": "tsx --import ./src/instrumentation.ts watch src/worker.ts",
+    "dev:worker": "tsx watch --import ./src/instrumentation.ts src/worker.ts",
     "security:generate-keys": "node --import tsx scripts/generate-development-secrets.ts",
+    "demo:totp": "node --import tsx scripts/demo-totp.ts",
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",

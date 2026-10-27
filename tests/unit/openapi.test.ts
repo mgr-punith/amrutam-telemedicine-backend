@@ -5,6 +5,7 @@ import { createOpenApiDocument } from '../../src/openapi/document.js';
 describe('OpenAPI document', () => {
   it('documents all 22 assignment business endpoints plus health checks', () => {
     const document = createOpenApiDocument();
+    expect(document.servers).toEqual([{ url: '/', description: 'Current API origin' }]);
     const paths = document.paths as Readonly<Record<string, unknown>>;
 
     expect(Object.keys(paths)).toEqual(
