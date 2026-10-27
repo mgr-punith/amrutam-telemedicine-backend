@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createOpenApiDocument } from '../../src/openapi/document.js';
 
 describe('OpenAPI document', () => {
-  it('documents authentication and the Stage 3 doctor, booking, and payment endpoints', () => {
+  it('documents all 22 assignment business endpoints plus health checks', () => {
     const document = createOpenApiDocument();
     const paths = document.paths as Readonly<Record<string, unknown>>;
 
@@ -22,10 +22,30 @@ describe('OpenAPI document', () => {
         '/api/v1/availability/slots',
         '/api/v1/admin/doctors/{id}/verify',
         '/api/v1/consultations',
+        '/api/v1/consultations/{id}',
+        '/api/v1/consultations/{id}/start',
+        '/api/v1/consultations/{id}/complete',
+        '/api/v1/consultations/{id}/cancel',
+        '/api/v1/consultations/{id}/prescriptions',
         '/api/v1/webhooks/payments',
         '/api/v1/dev/payments/{id}/simulate',
+        '/api/v1/admin/analytics/overview',
       ]),
     );
+    const businessOperationCount = Object.entries(paths)
+      .filter(([path]) => path.startsWith('/api/v1/'))
+      .reduce((count, [, pathItem]) => {
+        if (typeof pathItem !== 'object' || pathItem === null) {
+          return count;
+        }
+        return (
+          count +
+          Object.keys(pathItem).filter((method) =>
+            ['get', 'post', 'put', 'patch', 'delete'].includes(method),
+          ).length
+        );
+      }, 0);
+    expect(businessOperationCount).toBe(22);
     expect(JSON.stringify(document)).toContain('accessBearer');
     expect(JSON.stringify(document)).toContain('mfaBearer');
     expect(JSON.stringify(document)).toContain('Idempotency-Key');

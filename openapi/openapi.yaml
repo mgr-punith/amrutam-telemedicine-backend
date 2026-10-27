@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Amrutam Telemedicine API
-  version: 0.3.0
+  version: 0.4.0
   description: Security-first telemedicine backend demonstration API.
 servers:
   - url: http://localhost:3000
@@ -11,6 +11,8 @@ tags:
   - name: Authentication
   - name: Doctors
   - name: Booking
+  - name: Consultations
+  - name: Prescriptions
   - name: Payments
   - name: Admin
 paths:
@@ -790,6 +792,411 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/consultations/{id}:
+    get:
+      tags:
+        - Consultations
+      operationId: getConsultation
+      summary: Get an owned or assigned consultation
+      security:
+        - accessBearer: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Consultation ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Consultation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/consultations/{id}/start:
+    post:
+      tags:
+        - Consultations
+      operationId: startConsultation
+      summary: Start a confirmed consultation as the assigned doctor
+      security:
+        - accessBearer: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Consultation ID
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: ^[A-Za-z0-9._:-]+$
+      responses:
+        '200':
+          description: Consultation started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/consultations/{id}/complete:
+    post:
+      tags:
+        - Consultations
+      operationId: completeConsultation
+      summary: Complete an in-progress consultation as the assigned doctor
+      security:
+        - accessBearer: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Consultation ID
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: ^[A-Za-z0-9._:-]+$
+      responses:
+        '200':
+          description: Consultation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/consultations/{id}/cancel:
+    post:
+      tags:
+        - Consultations
+      operationId: cancelConsultation
+      summary: Cancel a pending-payment or confirmed consultation and compensate payment/slot state
+      security:
+        - accessBearer: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Consultation ID
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: ^[A-Za-z0-9._:-]+$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelConsultationRequest'
+      responses:
+        '200':
+          description: Consultation cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultation'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/consultations/{id}/prescriptions:
+    post:
+      tags:
+        - Prescriptions
+      operationId: createPrescription
+      summary: Create an encrypted prescription version after completion as the assigned doctor
+      security:
+        - accessBearer: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Consultation ID
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: ^[A-Za-z0-9._:-]+$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrescriptionRequest'
+      responses:
+        '201':
+          description: Encrypted prescription created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrescriptionMetadata'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - Prescriptions
+      operationId: listPrescriptions
+      summary: Read decrypted prescriptions as the patient or assigned doctor
+      security:
+        - accessBearer: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Consultation ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Authorized prescription versions
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - prescriptions
+                properties:
+                  prescriptions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prescription'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/webhooks/payments:
     post:
       tags:
@@ -890,6 +1297,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentEventResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/admin/analytics/overview:
+    get:
+      tags:
+        - Admin
+      operationId: getAdminAnalyticsOverview
+      summary: Get aggregate-only platform analytics
+      security:
+        - accessBearer: []
+      responses:
+        '200':
+          description: Aggregate analytics overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAnalyticsOverview'
         '400':
           description: Validation failed
           content:
@@ -1057,6 +1515,29 @@ components:
       required:
         - slotId
         - mode
+      additionalProperties: false
+    CancelConsultationRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum:
+            - PATIENT_REQUEST
+            - DOCTOR_UNAVAILABLE
+            - SCHEDULING_CONFLICT
+            - OTHER
+      required:
+        - reason
+      additionalProperties: false
+    CreatePrescriptionRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+      required:
+        - content
       additionalProperties: false
     PaymentWebhookRequest:
       type: object
@@ -1356,6 +1837,301 @@ components:
               type: string
             providerReference:
               type: string
+    Consultation:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - patientId
+        - doctorId
+        - doctorUserId
+        - slotId
+        - status
+        - mode
+        - scheduledAt
+        - startedAt
+        - endedAt
+        - cancelReason
+        - version
+        - payment
+      properties:
+        id:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        doctorId:
+          type: string
+          format: uuid
+        doctorUserId:
+          type: string
+          format: uuid
+        slotId:
+          type: string
+          format: uuid
+        status:
+          enum:
+            - PENDING_PAYMENT
+            - CONFIRMED
+            - IN_PROGRESS
+            - COMPLETED
+            - CANCELLED
+            - EXPIRED
+            - NO_SHOW
+        mode:
+          enum:
+            - VIDEO
+            - AUDIO
+            - CHAT
+        scheduledAt:
+          type: string
+          format: date-time
+        startedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        endedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        cancelReason:
+          type:
+            - string
+            - 'null'
+          enum:
+            - PATIENT_REQUEST
+            - DOCTOR_UNAVAILABLE
+            - SCHEDULING_CONFLICT
+            - OTHER
+            - null
+        version:
+          type: integer
+          minimum: 0
+        payment:
+          oneOf:
+            - $ref: '#/components/schemas/ConsultationPayment'
+            - type: 'null'
+    ConsultationPayment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - amountMinor
+        - currency
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        amountMinor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        status:
+          enum:
+            - PENDING
+            - SUCCEEDED
+            - FAILED
+            - EXPIRED
+            - REFUNDED
+    PrescriptionMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - consultationId
+        - version
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        consultationId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+    Prescription:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - consultationId
+        - version
+        - content
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        consultationId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        createdAt:
+          type: string
+          format: date-time
+    AdminAnalyticsOverview:
+      type: object
+      additionalProperties: false
+      required:
+        - generatedAt
+        - users
+        - doctorProfiles
+        - consultations
+        - payments
+        - prescriptions
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        users:
+          $ref: '#/components/schemas/UserAggregates'
+        doctorProfiles:
+          $ref: '#/components/schemas/DoctorAggregates'
+        consultations:
+          $ref: '#/components/schemas/ConsultationAggregates'
+        payments:
+          $ref: '#/components/schemas/PaymentAggregates'
+        prescriptions:
+          type: object
+          additionalProperties: false
+          required:
+            - total
+          properties:
+            total:
+              type: integer
+              minimum: 0
+    UserAggregates:
+      type: object
+      additionalProperties: false
+      required:
+        - total
+        - patients
+        - doctors
+        - admins
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        patients:
+          type: integer
+          minimum: 0
+        doctors:
+          type: integer
+          minimum: 0
+        admins:
+          type: integer
+          minimum: 0
+    DoctorAggregates:
+      type: object
+      additionalProperties: false
+      required:
+        - total
+        - verified
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        verified:
+          type: integer
+          minimum: 0
+    ConsultationAggregates:
+      type: object
+      additionalProperties: false
+      required:
+        - total
+        - byStatus
+      properties:
+        total:
+          type: integer
+          minimum: 0
+        byStatus:
+          type: object
+          additionalProperties: false
+          required:
+            - PENDING_PAYMENT
+            - CONFIRMED
+            - IN_PROGRESS
+            - COMPLETED
+            - CANCELLED
+            - EXPIRED
+            - NO_SHOW
+          properties:
+            PENDING_PAYMENT:
+              type: integer
+              minimum: 0
+            CONFIRMED:
+              type: integer
+              minimum: 0
+            IN_PROGRESS:
+              type: integer
+              minimum: 0
+            COMPLETED:
+              type: integer
+              minimum: 0
+            CANCELLED:
+              type: integer
+              minimum: 0
+            EXPIRED:
+              type: integer
+              minimum: 0
+            NO_SHOW:
+              type: integer
+              minimum: 0
+    PaymentAggregates:
+      type: object
+      additionalProperties: false
+      required:
+        - succeeded
+        - refunded
+        - capturedAmountMinorByCurrency
+        - refundedAmountMinorByCurrency
+      properties:
+        succeeded:
+          type: integer
+          minimum: 0
+        refunded:
+          type: integer
+          minimum: 0
+        capturedAmountMinorByCurrency:
+          type: array
+          items:
+            $ref: '#/components/schemas/CurrencyAmount'
+        refundedAmountMinorByCurrency:
+          type: array
+          items:
+            $ref: '#/components/schemas/CurrencyAmount'
+    CurrencyAmount:
+      type: object
+      additionalProperties: false
+      required:
+        - currency
+        - amountMinor
+      properties:
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        amountMinor:
+          type: integer
+          minimum: 0
     PaymentEventResponse:
       type: object
       additionalProperties: false

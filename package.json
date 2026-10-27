@@ -21,7 +21,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "openapi:generate": "node --import tsx scripts/generate-openapi.ts",
-    "openapi:check": "npm run openapi:generate && git diff --exit-code -- openapi/openapi.yaml",
+    "openapi:check": "node --import tsx scripts/check-openapi.ts",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
