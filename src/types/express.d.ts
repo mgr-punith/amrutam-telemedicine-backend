@@ -5,6 +5,7 @@ declare global {
     interface Request {
       requestId: string;
       auth?: AuthenticatedPrincipal;
+      rawBody?: Buffer;
     }
   }
 }
@@ -12,6 +13,7 @@ declare global {
 declare module 'node:http' {
   interface IncomingMessage {
     requestId: string;
+    rawBody?: Buffer;
   }
 }
 

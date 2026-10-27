@@ -59,6 +59,13 @@ export class ConflictError extends AppError {
   }
 }
 
+export class UnprocessableEntityError extends AppError {
+  public constructor(code: string, message: string) {
+    super(422, code, message);
+    this.name = 'UnprocessableEntityError';
+  }
+}
+
 export class TooManyRequestsError extends AppError {
   public constructor(retryAfterSeconds: number) {
     super(429, 'RATE_LIMITED', 'Too many requests. Try again later.', { retryAfterSeconds });

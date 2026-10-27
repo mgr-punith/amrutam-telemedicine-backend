@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Amrutam Telemedicine API
-  version: 0.2.0
+  version: 0.3.0
   description: Security-first telemedicine backend demonstration API.
 servers:
   - url: http://localhost:3000
@@ -9,6 +9,10 @@ servers:
 tags:
   - name: Health
   - name: Authentication
+  - name: Doctors
+  - name: Booking
+  - name: Payments
+  - name: Admin
 paths:
   /health/live:
     get:
@@ -71,8 +75,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '409':
           description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
           content:
             application/json:
               schema:
@@ -116,8 +132,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '409':
           description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
           content:
             application/json:
               schema:
@@ -155,8 +183,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '409':
           description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
           content:
             application/json:
               schema:
@@ -200,8 +240,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '409':
           description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
           content:
             application/json:
               schema:
@@ -245,8 +297,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '409':
           description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
           content:
             application/json:
               schema:
@@ -288,8 +352,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '409':
           description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
           content:
             application/json:
               schema:
@@ -329,8 +405,517 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '409':
           description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/doctors:
+    get:
+      tags:
+        - Doctors
+      operationId: searchDoctors
+      summary: Search verified doctors
+      parameters:
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - in: query
+          name: specialization
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - in: query
+          name: city
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - in: query
+          name: language
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 40
+        - in: query
+          name: maxFeeMinor
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 10000000
+        - in: query
+          name: limit
+          required: false
+          schema:
+            default: 20
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Verified doctors
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - doctors
+                properties:
+                  doctors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DoctorSummary'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/doctors/{id}:
+    get:
+      tags:
+        - Doctors
+      operationId: getDoctor
+      summary: Get a verified doctor profile
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Doctor ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Verified doctor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorDetail'
+        '404':
+          description: Doctor not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/doctors/{id}/slots:
+    get:
+      tags:
+        - Doctors
+      operationId: listDoctorSlots
+      summary: List future available slots for a verified doctor
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Doctor ID
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date-time
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date-time
+            pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+        - in: query
+          name: limit
+          required: false
+          schema:
+            default: 50
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Available slots
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - slots
+                properties:
+                  slots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AvailabilitySlot'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/availability/slots:
+    post:
+      tags:
+        - Doctors
+      operationId: createAvailabilitySlot
+      summary: Create availability for the authenticated verified doctor
+      security:
+        - accessBearer: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: ^[A-Za-z0-9._:-]+$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAvailabilitySlotRequest'
+      responses:
+        '201':
+          description: Availability created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilitySlot'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/admin/doctors/{id}/verify:
+    post:
+      tags:
+        - Admin
+      operationId: verifyDoctor
+      summary: Verify a doctor profile
+      security:
+        - accessBearer: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Doctor ID
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: ^[A-Za-z0-9._:-]+$
+      responses:
+        '200':
+          description: Doctor verified
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - verificationStatus
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  verificationStatus:
+                    const: VERIFIED
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/consultations:
+    post:
+      tags:
+        - Booking
+      operationId: createConsultation
+      summary: Atomically claim a slot and create pending consultation/payment records
+      security:
+        - accessBearer: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: ^[A-Za-z0-9._:-]+$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConsultationRequest'
+      responses:
+        '201':
+          description: Pending booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingBooking'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/webhooks/payments:
+    post:
+      tags:
+        - Payments
+      operationId: processPaymentWebhook
+      summary: Process a signed mock payment event
+      parameters:
+        - in: header
+          name: X-Payment-Signature
+          required: true
+          schema:
+            type: string
+            pattern: ^[a-f0-9]{64}$
+          description: Hex HMAC-SHA256 of the exact raw JSON body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentWebhookRequest'
+      responses:
+        '200':
+          description: Event accepted or safely replayed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentEventResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/dev/payments/{id}/simulate:
+    post:
+      tags:
+        - Payments
+      operationId: simulatePayment
+      summary: Simulate payment result outside production
+      security:
+        - accessBearer: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Payment ID
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: ^[A-Za-z0-9._:-]+$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulatePaymentRequest'
+      responses:
+        '200':
+          description: Payment result applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentEventResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Idempotency key conflicts with a different request
           content:
             application/json:
               schema:
@@ -440,6 +1025,72 @@ components:
           maxLength: 256
       required:
         - refreshToken
+      additionalProperties: false
+    CreateAvailabilitySlotRequest:
+      type: object
+      properties:
+        startTime:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+        endTime:
+          type: string
+          format: date-time
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|([+-](?:[01]\d|2[0-3]):[0-5]\d)))$
+      required:
+        - startTime
+        - endTime
+      additionalProperties: false
+    CreateConsultationRequest:
+      type: object
+      properties:
+        slotId:
+          type: string
+          format: uuid
+          pattern: ^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$
+        mode:
+          type: string
+          enum:
+            - VIDEO
+            - AUDIO
+            - CHAT
+      required:
+        - slotId
+        - mode
+      additionalProperties: false
+    PaymentWebhookRequest:
+      type: object
+      properties:
+        eventId:
+          type: string
+          minLength: 8
+          maxLength: 128
+        providerReference:
+          type: string
+          minLength: 8
+          maxLength: 128
+        status:
+          type: string
+          enum:
+            - SUCCEEDED
+            - FAILED
+            - EXPIRED
+      required:
+        - eventId
+        - providerReference
+        - status
+      additionalProperties: false
+    SimulatePaymentRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - SUCCEEDED
+            - FAILED
+            - EXPIRED
+      required:
+        - status
       additionalProperties: false
     Session:
       type: object
@@ -567,3 +1218,165 @@ components:
             enum:
               - up
               - down
+    DoctorSummary:
+      type: object
+      required:
+        - id
+        - fullName
+        - specialization
+        - experienceYears
+        - consultationFeeMinor
+        - currency
+        - city
+        - languages
+        - ratingAvg
+        - ratingCount
+        - verificationStatus
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        specialization:
+          type: string
+        experienceYears:
+          type: integer
+          minimum: 0
+        consultationFeeMinor:
+          type: integer
+          minimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        city:
+          type: string
+        languages:
+          type: array
+          items:
+            type: string
+        ratingAvg:
+          type: number
+          minimum: 0
+          maximum: 5
+        ratingCount:
+          type: integer
+          minimum: 0
+        verificationStatus:
+          const: VERIFIED
+    DoctorDetail:
+      allOf:
+        - $ref: '#/components/schemas/DoctorSummary'
+        - type: object
+          required:
+            - qualifications
+          properties:
+            qualifications:
+              type: array
+              items:
+                type: string
+    AvailabilitySlot:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - doctorId
+        - startTime
+        - endTime
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        doctorId:
+          type: string
+          format: uuid
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          const: AVAILABLE
+    PendingBooking:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - patientId
+        - doctorId
+        - slotId
+        - status
+        - mode
+        - scheduledAt
+        - payment
+      properties:
+        id:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        doctorId:
+          type: string
+          format: uuid
+        slotId:
+          type: string
+          format: uuid
+        status:
+          const: PENDING_PAYMENT
+        mode:
+          enum:
+            - VIDEO
+            - AUDIO
+            - CHAT
+        scheduledAt:
+          type: string
+          format: date-time
+        payment:
+          type: object
+          required:
+            - id
+            - status
+            - amountMinor
+            - currency
+            - providerReference
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              const: PENDING
+            amountMinor:
+              type: integer
+              minimum: 0
+            currency:
+              type: string
+            providerReference:
+              type: string
+    PaymentEventResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - received
+        - duplicate
+        - paymentId
+      properties:
+        received:
+          const: true
+        duplicate:
+          type: boolean
+        paymentId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+        paymentStatus:
+          enum:
+            - PENDING
+            - SUCCEEDED
+            - FAILED
+            - EXPIRED
+            - REFUNDED
