@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+node_modules
+dist
+coverage
+docs
+tests
+*.log
+Backend Developer Assignment*.pdf
+AGENTS.md
+

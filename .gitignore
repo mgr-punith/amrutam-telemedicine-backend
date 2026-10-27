@@ -1,0 +1,17 @@
+node_modules/
+.npm-cache/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.idea/
+.vscode/
+.agents/
+.aws/
+.codex/
+AGENTS.md
+
+
