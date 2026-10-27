@@ -24,11 +24,14 @@ services:
       AMRUTAM_REFRESH_TOKEN_TTL_SECONDS: ${AMRUTAM_REFRESH_TOKEN_TTL_SECONDS:-2592000}
       AMRUTAM_TOTP_ISSUER: ${AMRUTAM_TOTP_ISSUER:-Amrutam}
       AMRUTAM_PAYMENT_WEBHOOK_SECRET: ${AMRUTAM_PAYMENT_WEBHOOK_SECRET:?Set AMRUTAM_PAYMENT_WEBHOOK_SECRET in .env}
+      AMRUTAM_SERVICE_NAME: amrutam-api
+      AMRUTAM_OTEL_EXPORTER_ENDPOINT: ${AMRUTAM_OTEL_EXPORTER_ENDPOINT:-}
     ports:
       - '3000:3000'
+      - '9100:9100'
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     init: true
@@ -38,6 +41,75 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: runtime
+    command: ['node', '--import', './dist/instrumentation.js', 'dist/worker.js']
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      METRICS_PORT: 9101
+      LOG_LEVEL: info
+      CORS_ALLOWED_ORIGINS: http://localhost:3001
+      DATABASE_URL: postgresql://amrutam:amrutam@postgres:5432/amrutam
+      REDIS_URL: redis://redis:6379
+      AMRUTAM_SERVICE_NAME: amrutam-worker
+      AMRUTAM_OTEL_EXPORTER_ENDPOINT: ${AMRUTAM_OTEL_EXPORTER_ENDPOINT:-}
+      AMRUTAM_WORKER_SCAN_INTERVAL_MS: 60000
+    ports:
+      - '9101:9101'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: build
+    command: ['npm', 'run', 'db:migrate']
+    environment:
+      DATABASE_URL: postgresql://amrutam:amrutam@postgres:5432/amrutam
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  seed:
+    build:
+      context: .
+      target: build
+    command: ['npm', 'run', 'db:seed']
+    profiles: ['seed']
+    environment:
+      DATABASE_URL: postgresql://amrutam:amrutam@postgres:5432/amrutam
+      AMRUTAM_ENCRYPTION_KEYS: ${AMRUTAM_ENCRYPTION_KEYS:?Set AMRUTAM_ENCRYPTION_KEYS in .env}
+      AMRUTAM_ACTIVE_ENCRYPTION_KEY_VERSION: ${AMRUTAM_ACTIVE_ENCRYPTION_KEY_VERSION:-v1}
+      AMRUTAM_JWT_PRIVATE_KEY_BASE64: ${AMRUTAM_JWT_PRIVATE_KEY_BASE64:?Set AMRUTAM_JWT_PRIVATE_KEY_BASE64 in .env}
+      AMRUTAM_JWT_PUBLIC_KEY_BASE64: ${AMRUTAM_JWT_PUBLIC_KEY_BASE64:?Set AMRUTAM_JWT_PUBLIC_KEY_BASE64 in .env}
+      AMRUTAM_JWT_KEY_ID: ${AMRUTAM_JWT_KEY_ID:-local-v1}
+      AMRUTAM_JWT_ISSUER: ${AMRUTAM_JWT_ISSUER:-amrutam-api}
+      AMRUTAM_JWT_AUDIENCE: ${AMRUTAM_JWT_AUDIENCE:-amrutam-clients}
+      AMRUTAM_ACCESS_TOKEN_TTL_SECONDS: ${AMRUTAM_ACCESS_TOKEN_TTL_SECONDS:-900}
+      AMRUTAM_REFRESH_TOKEN_TTL_SECONDS: ${AMRUTAM_REFRESH_TOKEN_TTL_SECONDS:-2592000}
+      AMRUTAM_TOTP_ISSUER: ${AMRUTAM_TOTP_ISSUER:-Amrutam}
+      AMRUTAM_PAYMENT_WEBHOOK_SECRET: ${AMRUTAM_PAYMENT_WEBHOOK_SECRET:?Set AMRUTAM_PAYMENT_WEBHOOK_SECRET in .env}
+      AMRUTAM_DEMO_PASSWORD: ${AMRUTAM_DEMO_PASSWORD:?Set AMRUTAM_DEMO_PASSWORD in .env}
+      AMRUTAM_DEMO_MFA_SECRET: ${AMRUTAM_DEMO_MFA_SECRET:?Set AMRUTAM_DEMO_MFA_SECRET in .env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: 'no'
 
   postgres:
     image: postgres:16-alpine
@@ -68,6 +140,38 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.111.0
+    profiles: ['observability']
+    command: ['--config=/etc/otelcol-contrib/config.yaml']
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - '4317:4317'
+      - '4318:4318'
+    depends_on:
+      - jaeger
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    profiles: ['observability']
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    ports:
+      - '16686:16686'
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ['observability']
+    command: ['--config.file=/etc/prometheus/prometheus.yml']
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '9090:9090'
     restart: unless-stopped
 
 volumes:

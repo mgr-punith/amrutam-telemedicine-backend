@@ -1,0 +1,2 @@
+# Public RFC 6238 Appendix B SHA-1 test vector in historical commit 45903f1.
+45903f1930d8e74abcad29394df195a1d63a76be:tests/unit/totp-service.test.ts:generic-api-key:27

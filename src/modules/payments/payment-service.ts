@@ -3,11 +3,14 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import { ConflictError, NotFoundError, UnauthorizedError } from '../../common/errors/app-error.js';
 import type { PaymentWebhookRequest, SimulatePaymentRequest } from './payment-contracts.js';
 import type { PaymentRepository } from './payment-repository.js';
+import type { ApplicationMetrics } from '../../infra/observability/metrics.js';
+import { withActiveSpan } from '../../infra/observability/tracing.js';
 
 export class PaymentService {
   public constructor(
     private readonly repository: PaymentRepository,
     private readonly webhookSecret: string,
+    private readonly metrics?: ApplicationMetrics,
   ) {}
 
   public async processWebhook(input: {
@@ -53,16 +56,30 @@ export class PaymentService {
     requestId: string,
     now: Date,
   ) {
-    const result = await this.repository.processEvent({ event, payloadHash, requestId, now });
+    let result;
+    try {
+      result = await withActiveSpan('payment.apply_event', { 'payment.status': event.status }, () =>
+        this.repository.processEvent({ event, payloadHash, requestId, now }),
+      );
+    } catch (error: unknown) {
+      this.metrics?.recordPayment(event.status, 'error');
+      throw error;
+    }
     if (result.kind === 'event_mismatch') {
+      this.metrics?.recordPayment(event.status, 'mismatch');
       throw new ConflictError(
         'WEBHOOK_EVENT_REUSED',
         'The webhook event ID was reused with a different payload.',
       );
     }
     if (result.kind === 'payment_not_found') {
+      this.metrics?.recordPayment(event.status, 'not_found');
       throw new NotFoundError('The payment provider reference was not found.');
     }
+    this.metrics?.recordPayment(
+      event.status,
+      result.kind === 'duplicate' ? 'duplicate' : 'processed',
+    );
     return {
       received: true,
       duplicate: result.kind === 'duplicate',

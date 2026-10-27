@@ -214,3 +214,52 @@ Known limitations / deferred:
   implementation would run the external refund asynchronously with retry/backoff and reconciliation.
 - Consultation notes, diagnosis coding, provider integrations, and broader admin drill-down APIs are
   deliberately excluded from the one-day assignment scope.
+
+## M5 / Stage 5 — Observability, worker, infrastructure, CI, and submission documents
+
+Status: Complete
+
+Implemented:
+
+- Prometheus registry and separate metrics servers for API and worker. Exported signals include
+  normalized-route HTTP count/duration, booking outcomes, payment outcomes, expired holds, and Node
+  process/runtime metrics.
+- OpenTelemetry SDK with OTLP HTTP export, Pino/Redis/Prisma instrumentation, PHI-safe manual HTTP
+  spans, and manual booking/payment/worker spans. Route templates strip UUIDs and query strings.
+- Pino completion/error logs now include request ID, method, normalized route, status, and duration
+  without logging request or response bodies.
+- BullMQ maintenance worker and recurring scheduler for abandoned held slots. A bounded
+  `FOR UPDATE SKIP LOCKED` transaction expires pending payment/consultation state, releases the slot,
+  and appends an audit record; jobs retry five times with exponential backoff.
+- Docker Compose migration gate plus required API, worker, PostgreSQL and Redis services. The
+  `observability` profile adds the OpenTelemetry Collector, Jaeger, and Prometheus.
+- Compact AWS Terraform reference for two-AZ VPC/subnets, ALB/WAF/TLS, ECS Fargate API/worker, RDS
+  PostgreSQL, Redis, ECR, KMS, Secrets Manager, CloudWatch logs, VPC flow logs, backups, deletion
+  protection, and API autoscaling.
+- GitHub Actions now runs on every push and pull request with quality/integration/OpenAPI/build/audit,
+  Docker build plus Trivy, Terraform format/validate, full-history Gitleaks, and Checkov.
+- Required README, 2–4 page architecture document, security checklist/threat model, and timed demo
+  script. Architecture covers data flow, booking sequence, ER model, API schema, retries/backoff,
+  partitioning, caching/concurrency, transactions/sagas, and backup/DR.
+
+Verification completed:
+
+- Unit suite: 20 files and 48 tests pass. New tests prove safe normalized telemetry labels and
+  business/worker metric export.
+- Stage 5 PostgreSQL/Redis integration proof atomically expires an overdue hold, expires its payment
+  and consultation, releases the slot, writes the audit record, and confirms metrics contain no
+  consultation/payment IDs.
+- Docker Compose validates in default and `observability` profile modes with command-scoped
+  placeholder secrets; no local `.env` was created or modified.
+- Terraform 1.9.8 formats and validates using AWS provider 5.100.0.
+- Checkov result: 163 passed, 0 failed, 6 documented skips. Full-history Gitleaks reports no
+  unapproved findings; the only ignore is the exact fingerprint of the public RFC 6238 test vector
+  already present in pushed history.
+
+Documented-only / deferred:
+
+- The 100k consultations/day, p95 latency, and 99.95% availability values are design objectives, not
+  fabricated benchmark claims. Production-like load, failover, and restore exercises remain required.
+- Cross-region snapshot copy/restore automation, read replicas, automated monthly partition
+  management, distributed rate limiting, provider reconciliation, immutable audit archive, and full
+  Grafana/alert suites remain production extensions.

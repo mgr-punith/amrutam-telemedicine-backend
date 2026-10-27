@@ -17,10 +17,20 @@ describe('loadEnvironment', () => {
 
     expect(environment.port).toBe(3000);
     expect(environment.metricsPort).toBe(9100);
+    expect(environment.serviceName).toBe('amrutam-api');
+    expect(environment.otelExporterEndpoint).toBeUndefined();
+    expect(environment.workerScanIntervalMs).toBe(60_000);
     expect(environment.corsAllowedOrigins).toEqual([
       'http://localhost:3001',
       'http://localhost:3002',
     ]);
+  });
+
+  it('treats an empty optional OTLP endpoint as disabled', () => {
+    expect(
+      loadEnvironment({ ...validEnvironment, AMRUTAM_OTEL_EXPORTER_ENDPOINT: '' })
+        .otelExporterEndpoint,
+    ).toBeUndefined();
   });
 
   it('fails fast when required configuration is missing', () => {

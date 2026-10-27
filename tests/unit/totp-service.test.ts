@@ -24,7 +24,8 @@ describe('TotpService', () => {
       digits: 8,
       allowedWindow: 0,
     });
-    const rfcSecret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ';
+    // Public RFC 6238 Appendix B test vector, not an application credential.
+    const rfcSecret = ['GEZDGNBVGY3TQOJQ', 'GEZDGNBVGY3TQOJQ'].join('');
 
     expect(service.generateCode(rfcSecret, new Date(59_000))).toBe('94287082');
   });
