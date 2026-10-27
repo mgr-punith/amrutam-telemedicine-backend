@@ -22,10 +22,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:integration
+      - run: npm run openapi:check
+      - run: npm run build
 
   container:
     runs-on: ubuntu-latest

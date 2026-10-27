@@ -68,7 +68,7 @@ Verification completed:
 
 - `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`
   pass.
-- Unit suite: 7 files and 19 tests passed with Vitest 5.0.5.
+- Unit suite: 7 files and 20 tests passed with Vitest 5.0.5.
 - `npm run prisma:format -- --check`, `npm run prisma:validate`, and Prisma Client generation
   pass with the pinned Prisma release.
 - `npm run security:generate-keys` runs without writing secrets to the repository.
@@ -79,7 +79,47 @@ Verification completed:
 
 Documented-only / deferred:
 
-- Authentication services/routes, recovery-code lifecycle, RBAC/ownership middleware, and audit
-  recording are the next Stage 2 slice.
 - Production encryption keys and JWT signing keys belong in a secrets manager with rotation;
   the local generator exists only for development and demonstration.
+
+## M2 / Stage 2 — Authentication, authorization, and Swagger base
+
+Status: Complete
+
+Implemented:
+
+- Patient registration and password login using strict bounded Zod request contracts.
+- Doctor/admin MFA login with scoped short-lived JWT challenges, encrypted TOTP enrollment,
+  activation, verification, and eight one-time hashed recovery codes.
+- RS256 access JWT verification plus opaque refresh tokens stored only as SHA-256 hashes, rotated
+  transactionally, with token-family revocation after reuse detection.
+- Logout token revocation, failed-login counters, temporary account lockout, disabled/locked account
+  enforcement, and per-IP authentication throttling.
+- Reusable role and patient/doctor ownership guards. Admins do not receive an ownership bypass.
+- Audit records for registration, login outcomes, MFA actions, refresh rotation/reuse, and logout,
+  with no credentials, token values, PII, or MFA secrets in audit metadata.
+- Prisma-backed PostgreSQL repository wired through the manual dependency-injection container.
+- OpenAPI 3.1 generated from the Zod request contracts and executable Swagger UI at `/docs` outside
+  production. The committed artifact is `openapi/openapi.yaml`.
+- CI OpenAPI drift check and a Docker build fix that generates and carries the Prisma client into
+  the runtime image.
+
+Verification completed:
+
+- `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass.
+- Unit suite: 12 files and 33 tests pass.
+- Integration suite: 2 files and 9 tests pass against isolated PostgreSQL 16 and Redis 7 containers.
+- Integration coverage proves patient registration/login, encrypted phone/DOB and password storage,
+  seeded doctor password plus TOTP login, refresh rotation, refresh-token reuse family revocation,
+  logout, audit persistence, strict unknown-field rejection, Swagger UI, and OpenAPI JSON serving.
+- Clean `npm ci`, Prisma validation/client generation, and live `npm audit --audit-level=high`
+  pass; the audit reports zero vulnerabilities.
+
+Known limitations / deferred:
+
+- The in-memory authentication rate limiter is process-local; a later scalability pass can replace
+  it with Redis without changing the route contract.
+- Prisma 6's CLI config originally resolved a vulnerable `deepmerge-ts`; the lockfile now enforces
+  the patched 8.0.2 release through an npm override and Prisma validation/client generation pass.
+- Doctor/slot browsing, idempotent booking, payment compensation, and consultation ownership usage
+  are the next Stage 3 slice.

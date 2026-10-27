@@ -14,6 +14,9 @@ database schema, encrypted demo seed, and security primitives needed by the auth
 - Prisma/PostgreSQL schema with overlap and active-slot database guards.
 - AES-256-GCM field encryption, Argon2id hashing, RS256 access tokens, opaque refresh-token
   hashing, and RFC 6238 TOTP helpers.
+- Patient registration/login, doctor/admin MFA, rotating refresh tokens, logout, RBAC/ownership
+  foundations, authentication rate limiting, and safe audit records.
+- Generated OpenAPI 3.1 and executable Swagger UI at `http://localhost:3000/docs` in development.
 
 See [delivery progress](docs/PROGRESS.md) for verified results and current limitations.
 
@@ -33,6 +36,8 @@ npm run db:seed
 npm run lint
 npm run typecheck
 npm test
+npm run test:integration
+npm run openapi:check
 docker compose up --build
 ```
 
@@ -56,6 +61,7 @@ npm run test:integration
 npm run prisma:validate
 npm run db:migrate
 npm run db:seed
+npm run openapi:generate
 ```
 
 The seed creates fixed demo identities for `patient@amrutam.local`, `doctor@amrutam.local`, and
@@ -63,5 +69,9 @@ The seed creates fixed demo identities for `patient@amrutam.local`, `doctor@amru
 only in the developer's untracked `.env`; protected profile and MFA values are encrypted in the
 database.
 
-Authentication routes, booking, OpenAPI, observability, Terraform, and the final security
-documentation are delivered in later milestones defined in `AGENTS.md`.
+Authentication routes are available under `/api/v1/auth`. Open Swagger UI at `/docs` to execute
+registration, login, MFA, refresh, and logout. Use the generated doctor/admin TOTP secret from your
+local `.env`; secrets and protected data are never included in the OpenAPI artifact.
+
+Doctor browsing, booking/payment, consultation/prescription, observability, Terraform, and the final
+security documentation are delivered in later milestones defined in `AGENTS.md`.

@@ -30,3 +30,38 @@ export class PayloadTooLargeError extends AppError {
     this.name = 'PayloadTooLargeError';
   }
 }
+
+export class ValidationError extends AppError {
+  public constructor(details?: Readonly<Record<string, unknown>>) {
+    super(400, 'VALIDATION_ERROR', 'The request contains invalid data.', details);
+    this.name = 'ValidationError';
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  public constructor(message = 'Authentication is required or the credentials are invalid.') {
+    super(401, 'UNAUTHORIZED', message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
+export class ForbiddenError extends AppError {
+  public constructor(message = 'You are not allowed to perform this action.') {
+    super(403, 'FORBIDDEN', message);
+    this.name = 'ForbiddenError';
+  }
+}
+
+export class ConflictError extends AppError {
+  public constructor(code: string, message: string) {
+    super(409, code, message);
+    this.name = 'ConflictError';
+  }
+}
+
+export class TooManyRequestsError extends AppError {
+  public constructor(retryAfterSeconds: number) {
+    super(429, 'RATE_LIMITED', 'Too many requests. Try again later.', { retryAfterSeconds });
+    this.name = 'TooManyRequestsError';
+  }
+}

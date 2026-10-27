@@ -1,0 +1,569 @@
+openapi: 3.1.0
+info:
+  title: Amrutam Telemedicine API
+  version: 0.2.0
+  description: Security-first telemedicine backend demonstration API.
+servers:
+  - url: http://localhost:3000
+    description: Local Docker environment
+tags:
+  - name: Health
+  - name: Authentication
+paths:
+  /health/live:
+    get:
+      tags:
+        - Health
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Liveness'
+  /health/ready:
+    get:
+      tags:
+        - Health
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Dependencies are ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
+        '503':
+          description: A dependency is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Authentication
+      operationId: registerPatient
+      summary: Register a patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Patient registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      operationId: login
+      summary: Verify password credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Session or MFA challenge issued
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/LoginSession'
+                  - $ref: '#/components/schemas/MfaChallenge'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/mfa/enroll:
+    post:
+      tags:
+        - Authentication
+      operationId: enrollMfa
+      summary: Create an encrypted TOTP enrollment
+      security:
+        - mfaBearer: []
+      responses:
+        '200':
+          description: MFA enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaEnrollment'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/mfa/activate:
+    post:
+      tags:
+        - Authentication
+      operationId: activateMfa
+      summary: Verify enrollment and activate MFA
+      security:
+        - mfaBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaCodeRequest'
+      responses:
+        '200':
+          description: MFA activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MfaActivation'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/mfa/verify:
+    post:
+      tags:
+        - Authentication
+      operationId: verifyMfa
+      summary: Complete login using TOTP or a recovery code
+      security:
+        - mfaBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          description: MFA verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      operationId: refreshSession
+      summary: Rotate an opaque refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Refresh token rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/logout:
+    post:
+      tags:
+        - Authentication
+      operationId: logout
+      summary: Revoke the supplied refresh token
+      security:
+        - accessBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Logged out
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request conflicts with current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    accessBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    mfaBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT with scope=mfa
+      description: Use the mfaToken returned by password login.
+  schemas:
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          format: email
+          pattern: ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        phone:
+          type: string
+          pattern: ^\+[1-9]\d{7,14}$
+        dob:
+          type: string
+          format: date
+          pattern: ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        languages:
+          default: []
+          maxItems: 10
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+      required:
+        - email
+        - password
+        - fullName
+        - phone
+        - dob
+      additionalProperties: false
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          maxLength: 254
+          format: email
+          pattern: ^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+        - email
+        - password
+      additionalProperties: false
+    MfaCodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          pattern: ^\d{6}$
+      required:
+        - code
+      additionalProperties: false
+    MfaVerifyRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          pattern: ^\d{6}$
+        recoveryCode:
+          type: string
+          minLength: 12
+          maxLength: 64
+      additionalProperties: false
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 32
+          maxLength: 256
+      required:
+        - refreshToken
+      additionalProperties: false
+    Session:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+        - accessTokenExpiresInSeconds
+        - refreshToken
+        - refreshTokenExpiresAt
+      properties:
+        accessToken: &a1
+          type: string
+        accessTokenExpiresInSeconds: &a2
+          type: integer
+          minimum: 60
+        refreshToken: &a3
+          type: string
+        refreshTokenExpiresAt: &a4
+          type: string
+          format: date-time
+    LoginSession:
+      type: object
+      additionalProperties: false
+      required:
+        - mfaRequired
+        - accessToken
+        - accessTokenExpiresInSeconds
+        - refreshToken
+        - refreshTokenExpiresAt
+      properties:
+        mfaRequired:
+          const: false
+        accessToken: *a1
+        accessTokenExpiresInSeconds: *a2
+        refreshToken: *a3
+        refreshTokenExpiresAt: *a4
+    MfaChallenge:
+      type: object
+      additionalProperties: false
+      required:
+        - mfaRequired
+        - mfaEnrollmentRequired
+        - mfaToken
+      properties:
+        mfaRequired:
+          const: true
+        mfaEnrollmentRequired:
+          type: boolean
+        mfaToken:
+          type: string
+    MfaEnrollment:
+      type: object
+      additionalProperties: false
+      required:
+        - secret
+        - otpAuthUri
+      properties:
+        secret:
+          type: string
+        otpAuthUri:
+          type: string
+          format: uri
+    MfaActivation:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+        - accessTokenExpiresInSeconds
+        - refreshToken
+        - refreshTokenExpiresAt
+        - recoveryCodes
+      properties:
+        accessToken: *a1
+        accessTokenExpiresInSeconds: *a2
+        refreshToken: *a3
+        refreshTokenExpiresAt: *a4
+        recoveryCodes:
+          type: array
+          items:
+            type: string
+          minItems: 8
+          maxItems: 8
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          additionalProperties: true
+          required:
+            - code
+            - message
+            - requestId
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            requestId:
+              type: string
+    Liveness:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          const: alive
+    Readiness:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - checks
+      properties:
+        status:
+          enum:
+            - ready
+            - not_ready
+        checks:
+          type: object
+          additionalProperties:
+            enum:
+              - up
+              - down
