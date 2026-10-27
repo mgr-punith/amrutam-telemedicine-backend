@@ -12,6 +12,8 @@ describe('observability primitives', () => {
     ).toBe('/api/v1/consultations/:id/prescriptions');
     expect(normalizeHttpRoute('/docs/swagger-ui.css')).toBe('/docs/*');
     expect(normalizeHttpRoute('/unknown?email=patient@example.com')).toBe('unmatched');
+    expect(normalizeHttpRoute('/api/v1/doctors/private-email@example.com')).toBe('unmatched');
+    expect(normalizeHttpRoute('/health/private-identifier')).toBe('unmatched');
   });
 
   it('exports HTTP, booking, payment, worker, and process metrics without sensitive labels', async () => {

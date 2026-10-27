@@ -217,7 +217,7 @@ Known limitations / deferred:
 
 ## M5 / Stage 5 — Observability, worker, infrastructure, CI, and submission documents
 
-Status: Implemented and locally verified; PR #5 scanner corrections await push and remote CI.
+Status: Complete; PR #5 push/pull-request checks passed for commit `2ec9be8`.
 
 Implemented:
 
@@ -281,6 +281,9 @@ PR #5 CI correction (2026-10-27):
 - Remote CI still needs the correction commit pushed; the old failed run is not evidence about
   this new diff. No automatic commit or push was performed. Local `.env` remains ignored and untouched.
 
+Follow-up: the user pushed `2ec9be8`; `gh pr checks 5` confirmed all ten checks passed before
+starting Stage 6. The historical verification notes above describe the earlier local checkpoint.
+
 Documented-only / deferred:
 
 - The 100k consultations/day, p95 latency, and 99.95% availability values are design objectives, not
@@ -288,3 +291,40 @@ Documented-only / deferred:
 - Cross-region snapshot copy/restore automation, read replicas, automated monthly partition
   management, distributed rate limiting, provider reconciliation, immutable audit archive, and full
   Grafana/alert suites remain production extensions.
+
+## Stage 6 — Final Compose and Swagger rehearsal
+
+Status: Full functional rehearsal and local quality gates passed. Human video/submission and CI
+for this new diff remain pending.
+
+- Clean local clone from `2ec9be8`, new generated test credentials, isolated `amrutam-stage6`
+  project, new volumes, and separate loopback ports; original `.env` and running services preserved.
+- Compose observability startup, migration, and seed completed. API/worker/PostgreSQL/Redis healthy;
+  Collector, Jaeger and Prometheus running; both Prometheus targets UP.
+- Swagger executed register/login, doctor/admin MFA, search/detail/slots, availability, booking,
+  replay/mismatch, signed mock payment, start/complete, prescription create/read, IDOR/admin denial,
+  analytics, failed payment compensation, cancellation, refresh/logout, forged/duplicate webhooks.
+- Two concurrent browser HTTP bookings produced `[201, 409]`; database aggregate found no active
+  duplicate slot. Prescription storage check returned encrypted=true and versioned=true.
+- A synthetic pending hold was aged only in the isolated DB. The real scheduled worker expired
+  consultation/payment, released the slot, and wrote one expiry audit event.
+- Jaeger APIs and UI proved HTTP, Prisma, manual booking/payment and worker spans. Sampled traces
+  did not contain the synthetic prescription, phone or patient email; SQL used placeholders.
+- Fixed issues found by rehearsal: same-origin Swagger server; correct `tsx watch` argument order;
+  worker-specific healthcheck; duration/trace IDs in logs; mounted-router original URL handling;
+  bounded telemetry routes; omitted raw request/error data to prevent protected-data leakage.
+- Added two real HTTP logging regression cases (success/error). `npm test`: 51 tests passed;
+  `npm run test:integration`: 16 passed. `npm run lint` and `npm run typecheck` passed.
+- Corrected host development command served liveness and metrics; `demo:totp` generated a valid
+  six-digit code from temporary configuration. Exact demo payloads and commands are documented.
+- Detailed evidence: `docs/rehearsal.md`; human recording guide: `docs/demo-script.md`.
+
+- Final format/lint/typecheck/OpenAPI/build/diff checks passed. npm audit: zero vulnerabilities.
+  Gitleaks 8.24.3: no leaks in seven commits or current submission files (including new files).
+  Trivy 0.70.0: no fixable HIGH/CRITICAL findings in the final rehearsed image.
+- Stopped only the isolated rehearsal containers/network after collecting evidence. Existing
+  containers and volumes, including the original local `.env`, were preserved. Removed obsolete
+  project-created images at the user's request; current tools and observability images are retained.
+
+Remaining: push and green CI for this diff, human-recorded five-minute video, and submission.
+No production capacity/latency/SLO or visual/accessibility claim.

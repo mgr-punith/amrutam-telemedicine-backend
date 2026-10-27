@@ -43,7 +43,11 @@ export function createErrorHandler(logger: Logger): ErrorRequestHandler {
       return;
     }
 
-    logger.error({ err: error, requestId: request.requestId }, 'Unhandled request error');
+    // Database/parser errors may embed submitted protected data; keep it out of logs.
+    logger.error(
+      { errorType: 'UnhandledRequestError', requestId: request.requestId },
+      'Unhandled request error',
+    );
     response.status(500).json({
       error: {
         code: 'INTERNAL_SERVER_ERROR',

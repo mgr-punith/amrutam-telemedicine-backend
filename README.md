@@ -35,7 +35,7 @@ The generated [OpenAPI schema](openapi/openapi.yaml) contains exactly 22 busines
 Create your local environment file once. It is ignored by Git and must never be committed:
 
 ```bash
-cp .env.example .env
+test -f .env || cp .env.example .env
 npm ci
 npm run security:generate-keys
 ```
@@ -46,11 +46,17 @@ Application on the host, dependencies in Docker:
 
 ```bash
 docker compose up -d postgres redis
+export DATABASE_URL=postgresql://amrutam:amrutam@localhost:5432/amrutam
+export REDIS_URL=redis://localhost:6379
+export AMRUTAM_OTEL_EXPORTER_ENDPOINT=
 npm run prisma:generate
 npm run db:migrate
 npm run db:seed
 npm run dev
 ```
+
+The host URLs above override Compose-only hostnames from `.env`. Run `npm run dev:worker` in a
+second terminal with the same URLs and `METRICS_PORT=9101`. The API uses port 9100 for metrics.
 
 Complete container stack:
 
@@ -100,6 +106,17 @@ shared demo password and doctor/admin TOTP secret exist only in your untracked `
 Every authenticated non-auth mutation requires `Idempotency-Key`. Payment webhooks require
 `X-Payment-Signature`, the lowercase hex HMAC-SHA256 of the exact raw JSON body. Follow
 [docs/demo-script.md](docs/demo-script.md) for the timed recorded demonstration.
+
+Generate the seeded doctor/admin's current six-digit TOTP in a private terminal:
+
+```bash
+npm run --silent demo:totp
+```
+
+Use the login response's `mfaToken` in Swagger's **mfaBearer** authorization, verify the code, then
+put the returned `accessToken` in **accessBearer**. Paste token values without the `Bearer` prefix.
+Swagger uses the origin it was opened on, including custom ports. The completed rehearsal and
+remaining human submission steps are recorded in [docs/rehearsal.md](docs/rehearsal.md).
 
 ## Verification
 

@@ -60,6 +60,12 @@ services:
       AMRUTAM_WORKER_SCAN_INTERVAL_MS: 60000
     ports:
       - '9101:9101'
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:9101/metrics']
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
     depends_on:
       migrate:
         condition: service_completed_successfully
