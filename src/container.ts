@@ -1,10 +1,23 @@
 import { createConnection } from 'node:net';
 
+import { PrismaClient } from '@prisma/client';
+
 import { createApp } from './app.js';
 import { loadEnvironment } from './config/environment.js';
+import { loadSecurityEnvironment } from './config/security-environment.js';
+import { FieldEncryption } from './infra/crypto/field-encryption.js';
+import { PasswordHasher } from './infra/crypto/password-hasher.js';
+import { TokenService } from './infra/crypto/token-service.js';
+import { TotpService } from './infra/crypto/totp-service.js';
 import { createLogger } from './infra/logger.js';
+import { createAuthenticate } from './middleware/authenticate.js';
+import { createRateLimit } from './middleware/rate-limit.js';
+import { AuthController } from './modules/auth/auth-controller.js';
+import { PrismaAuthRepository } from './modules/auth/prisma-auth-repository.js';
+import { AuthService } from './modules/auth/auth-service.js';
 import { HealthController } from './modules/health/health-controller.js';
 import { HealthService, type ReadinessCheck } from './modules/health/health-service.js';
+import { createOpenApiDocument } from './openapi/document.js';
 
 const DEPENDENCY_CHECK_TIMEOUT_MS = 2_000;
 
@@ -39,19 +52,63 @@ function createTcpReadinessCheck(name: string, urlValue: string): ReadinessCheck
 
 export interface ContainerOverrides {
   readonly readinessChecks?: readonly ReadinessCheck[];
+  readonly prisma?: PrismaClient;
 }
 
 export function createContainer(overrides: ContainerOverrides = {}) {
   const environment = loadEnvironment();
+  const securityEnvironment = loadSecurityEnvironment();
   const logger = createLogger(environment);
-  // M0 proves dependency reachability without coupling the health route to a future ORM or Redis client.
+  const prisma = overrides.prisma ?? new PrismaClient();
   const readinessChecks = overrides.readinessChecks ?? [
-    createTcpReadinessCheck('postgres', environment.databaseUrl),
+    {
+      name: 'postgres',
+      async check(): Promise<void> {
+        await prisma.$queryRaw`SELECT 1`;
+      },
+    },
     createTcpReadinessCheck('redis', environment.redisUrl),
   ];
   const healthService = new HealthService(readinessChecks);
   const healthController = new HealthController(healthService);
-  const app = createApp({ environment, logger, healthController });
+  const encryption = new FieldEncryption(
+    securityEnvironment.encryptionKeys,
+    securityEnvironment.activeEncryptionKeyVersion,
+  );
+  const tokenService = new TokenService({
+    privateKeyPem: securityEnvironment.jwtPrivateKeyPem,
+    publicKeyPem: securityEnvironment.jwtPublicKeyPem,
+    keyId: securityEnvironment.jwtKeyId,
+    issuer: securityEnvironment.jwtIssuer,
+    audience: securityEnvironment.jwtAudience,
+    accessTokenTtlSeconds: securityEnvironment.accessTokenTtlSeconds,
+  });
+  const authRepository = new PrismaAuthRepository(prisma);
+  const authService = new AuthService(
+    authRepository,
+    new PasswordHasher(),
+    encryption,
+    tokenService,
+    new TotpService({ issuer: securityEnvironment.totpIssuer }),
+    {
+      accessTokenTtlSeconds: securityEnvironment.accessTokenTtlSeconds,
+      refreshTokenTtlSeconds: securityEnvironment.refreshTokenTtlSeconds,
+    },
+  );
+  const authController = new AuthController(authService);
+  const app = createApp({
+    environment,
+    logger,
+    healthController,
+    auth: {
+      controller: authController,
+      authenticateAccess: createAuthenticate(tokenService, { scopes: ['access'] }),
+      authenticateMfa: createAuthenticate(tokenService, { scopes: ['mfa'] }),
+      authenticationRateLimit: createRateLimit({ windowMs: 15 * 60 * 1_000, limit: 20 }),
+    },
+    openApiDocument: createOpenApiDocument(),
+    docsEnabled: environment.nodeEnv !== 'production',
+  });
 
-  return { app, environment, logger } as const;
+  return { app, environment, logger, prisma } as const;
 }

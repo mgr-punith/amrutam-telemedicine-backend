@@ -1,11 +1,13 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express';
 import type { Logger } from 'pino';
+import { ZodError, z } from 'zod';
 
 import {
   AppError,
   InvalidJsonError,
   NotFoundError,
   PayloadTooLargeError,
+  ValidationError,
 } from '../common/errors/app-error.js';
 
 function hasErrorType(error: unknown, type: string): boolean {
@@ -20,11 +22,14 @@ export function notFoundHandler(): RequestHandler {
 
 export function createErrorHandler(logger: Logger): ErrorRequestHandler {
   return (error: unknown, request, response, _next): void => {
-    const publicError = hasErrorType(error, 'entity.too.large')
-      ? new PayloadTooLargeError()
-      : hasErrorType(error, 'entity.parse.failed')
-        ? new InvalidJsonError()
-        : error;
+    const publicError =
+      error instanceof ZodError
+        ? new ValidationError({ validation: z.flattenError(error) })
+        : hasErrorType(error, 'entity.too.large')
+          ? new PayloadTooLargeError()
+          : hasErrorType(error, 'entity.parse.failed')
+            ? new InvalidJsonError()
+            : error;
 
     if (publicError instanceof AppError) {
       response.status(publicError.statusCode).json({

@@ -18,7 +18,7 @@ export async function startInfrastructureHarness(): Promise<InfrastructureHarnes
   ] as const);
 
   return {
-    databaseUrl: postgres.getConnectionUri(),
+    databaseUrl: postgres.getConnectionUri().replace(/^postgres:\/\//u, 'postgresql://'),
     redisUrl: redis.getConnectionUrl(),
     async stop(): Promise<void> {
       await Promise.all([postgres.stop(), redis.stop()]);
