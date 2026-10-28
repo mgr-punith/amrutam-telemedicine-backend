@@ -1,6 +1,26 @@
 # Delivery progress
 
-Last updated: 2026-10-27
+Last updated: 2026-10-28
+
+## Documentation review — 2026-10-28
+
+- Confirmed the seven requested deliverable categories have repository artifacts: application/IaC,
+  README setup, generated OpenAPI, architecture, tests/CI, observability configuration, and security
+  checklist/threat model. Added a linked deliverables index and all 22 business operations to README.
+- Clarified host versus Compose connection URLs, process restart after environment changes, the
+  explicit host API/worker commands, and readiness checking. The reported local failure was
+  reproduced with `curl`: HTTP 503 and both dependencies down. Inspection of the listening process
+  found no exported database/Redis URLs at launch; `.env` used Compose hostnames. A read-only
+  Prisma `SELECT 1` and Redis `PING` with localhost URLs both passed. The user's API was not restarted.
+- Corrected the architecture diagram: the worker schedules and consumes BullMQ expiry jobs.
+  Clarified that JWT/webhook verification currently accepts one key/secret; overlapping-key
+  rotation is a production extension. Cloud security controls are marked as undeployed Terraform.
+- Verification: `npm run format:check`, `npm run openapi:check`, and `git diff --check` passed.
+  A Node script parsed the committed OpenAPI YAML and confirmed the README lists exactly the same
+  22 business operations; it also checked 26 local documentation links and heading targets.
+- Architecture PDF pagination, current remote CI, and the human video/submission have not been
+  verified by this review. Application tests were not rerun for these documentation-only changes.
+  Earlier stage entries are historical checkpoints, not new verification runs.
 
 ## M0 — Repository foundation
 
