@@ -20,8 +20,7 @@ flowchart LR
   Client[Patient / Doctor / Admin] -->|HTTPS + JWT| ALB[ALB + WAF]
   ALB --> API[Stateless Express API tasks]
   API -->|transactions and indexed reads| PG[(PostgreSQL)]
-  API -->|BullMQ coordination| Redis[(Redis)]
-  Worker[BullMQ worker tasks] --> Redis
+  Worker[BullMQ worker tasks] -->|schedule and consume expiry scans| Redis[(Redis)]
   Worker -->|expired-hold compensation| PG
   API -->|OTLP traces| Collector[OTel Collector]
   Worker -->|OTLP traces| Collector

@@ -34,7 +34,8 @@ retention/legal review, and applicable healthcare agreements.
 - [x] Non-root, read-only runtime container; private reference tasks/databases; encryption in transit.
 - [x] CI includes format/lint/typecheck/tests/build/OpenAPI, npm audit, Gitleaks, Trivy, Terraform,
       and Checkov.
-- [x] KMS rotation, Secrets Manager, immutable ECR tags, scan-on-push, encrypted logs, VPC flow logs.
+- [x] Terraform reference: KMS rotation, Secrets Manager, immutable ECR tags, scan-on-push,
+      encrypted logs, and VPC flow logs; these cloud resources are not deployed.
 
 ## Attack surface
 
@@ -65,11 +66,14 @@ deploy readers that accept old/new versions, switch the active version, re-encry
 audited batches, verify counts/decryption, then retire the old key after backup retention. Never
 delete an old key while ciphertext references it.
 
-JWT rotation uses overlapping signing/public keys and `kid`: publish/accept the new public key,
-switch signing, wait beyond the maximum access-token TTL, then retire the old key. Refresh-token
-families are unaffected because they are opaque and hashed. Payment webhook secrets require an
-overlap period or provider-coordinated cutover. The composite application secret is intentionally not
-blindly auto-rotated by Terraform because these changes require dual-key coordination and rollback.
+The current JWT verifier accepts one configured public key and `kid`; replacing them invalidates
+tokens signed with the previous key. Rotation without interrupting sessions is a production extension:
+first add verification for overlapping public keys by `kid`, deploy readers, switch signing, wait
+beyond the maximum access-token TTL, then retire the old key. Refresh-token families are unaffected
+because they are opaque and hashed. Payment verification likewise accepts one configured webhook
+secret, so replacement needs a provider-coordinated cutover or an added overlap mechanism. The
+composite application secret is intentionally not blindly auto-rotated by Terraform because these
+changes require coordination and rollback.
 
 ## Logging, audit, retention, and incident response
 
